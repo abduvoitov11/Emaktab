@@ -2,7 +2,9 @@ import os
 import asyncio
 import re
 import logging
-from playwright.async_api import async_playwrigt
+import time
+# XATO 1: async_playwrigt -> async_playwright deb tuzatildi
+from playwright.async_api import async_playwright 
 from database import get_all_accounts
 
 logger = logging.getLogger(__name__)
@@ -13,15 +15,14 @@ SCREENSHOTS_DIR = os.path.join(os.path.dirname(__file__), 'screenshots')
 async def login_and_screenshot(login, password):
     """
     Log into eMaktab.uz for one account and save a screenshot.
-    Returns dict: {'path': str, 'login': str} or {'error': str, 'login': str}
     """
     browser = None
     try:
         if not os.path.exists(SCREENSHOTS_DIR):
             os.makedirs(SCREENSHOTS_DIR, exist_ok=True)
 
+        # XATO 2: Bu yerda ham async_playwright() bo'lishi shart
         async with async_playwright() as p:
-            # Added --no-sandbox and --disable-setuid-sandbox for better container/action compatibility
             browser = await p.chromium.launch(
                 headless=True,
                 args=["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"]
@@ -30,7 +31,6 @@ async def login_and_screenshot(login, password):
             page = await context.new_page()
 
             try:
-                # DNS/Network retry logic could be added here if needed, but playwright handles some retries
                 await page.goto(LOGIN_URL, wait_until='networkidle', timeout=60000)
             except Exception as e:
                 await browser.close()
@@ -56,8 +56,6 @@ async def login_and_screenshot(login, password):
             # Wait strategies
             login_url_norm = LOGIN_URL.rstrip('/')
             
-            # Wait for navigation or button disappearance
-            # We use a try/except block for the race condition
             try:
                 await asyncio.wait_for(
                     asyncio.gather(
@@ -67,7 +65,7 @@ async def login_and_screenshot(login, password):
                     timeout=35
                 )
             except (asyncio.TimeoutError, Exception):
-                pass # Proceed to check for success elements anyway.
+                pass 
 
             # Wait for success elements
             try:
@@ -78,14 +76,12 @@ async def login_and_screenshot(login, password):
                 )
                 await success_locator.wait_for(state='visible', timeout=25000)
             except Exception:
-                 # Check if we are still on login page or have an error
-                 pass
+                pass
 
             await page.wait_for_load_state('networkidle')
-            await asyncio.sleep(5) # Give it extra time to render fully
+            await asyncio.sleep(5) 
 
             safe_name = re.sub(r'[^a-zA-Z0-9_-]', '_', login)
-            import time
             timestamp = int(time.time() * 1000)
             
             screenshot_path = os.path.join(SCREENSHOTS_DIR, f"emaktab_{safe_name}_{timestamp}.png")
@@ -112,13 +108,10 @@ async def run_all_screenshots():
     return results
 
 async def run_all_screenshots_and_notify(bot, chat_id):
-    """
-    Run all screenshots and send to Telegram via bot instance.
-    """
     results = await run_all_screenshots()
     
     if not results:
-        await bot.send_message(chat_id=chat_id, text='No accounts found in database.')
+        await bot.send_message(chat_id=chat_id, text='Bazada hisoblar topilmadi.')
         return
 
     for r in results:
@@ -132,6 +125,5 @@ async def run_all_screenshots_and_notify(bot, chat_id):
              await bot.send_message(chat_id=chat_id, text=f"Login failed for {r['login']}: {r.get('error', 'Unknown error')}")
 
 if __name__ == "__main__":
-    # Test run
     print("Running screenshot test...")
     asyncio.run(run_all_screenshots())

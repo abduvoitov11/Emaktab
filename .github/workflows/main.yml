@@ -1,0 +1,31 @@
+name: AntiGravity Cron Job
+
+on:
+  schedule:
+    # Toshkent vaqti bilan har kuni 07:45 da (UTC 02:45)
+    - cron: '45 2 * * *'
+  workflow_dispatch: # Qo'lda yurgizish tugmasi
+
+jobs:
+  run-bot:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Kodni yuklab olish
+        uses: actions/checkout@v4
+
+      - name: Pythonni sozlash
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Kutubxonalarni o'rnatish
+        run: |
+          pip install -r requirements.txt
+          playwright install chromium
+          playwright install-deps chromium
+
+      - name: Botni ishga tushirish
+        env:
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          MONGODB_URI: ${{ secrets.MONGODB_URI }}
+        run: python main_cron.py

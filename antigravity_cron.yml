@@ -1,10 +1,7 @@
 name: eMaktab Daily Screenshots
 
 on:
-  schedule:
-    # 07:45 Tashkent time (UTC+5) is 02:45 UTC
-    - cron: '45 2 * * *'
-  workflow_dispatch: # Allows manual trigger for testing
+  workflow_dispatch: # Faqat Run workflow tugmasi orqali ishlaydi
 
 jobs:
   run-automation:
@@ -32,5 +29,4 @@ jobs:
         env:
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
           MONGODB_URI: ${{ secrets.MONGODB_URI }}
-          ADMIN_ID: ${{ secrets.ADMIN_ID }}
         run: python main_cron.py

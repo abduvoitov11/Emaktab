@@ -8,7 +8,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Muhit o'zgaruvchilari (Railway yoki GitHub Secrets-dan olinadi)
-SUPABASE_URL = os.getenv("SUPABASE_URL")https://gfavtpjehafhldgohtqi.supabase.co
+SUPABASE_URL = os.getenv("https://gfavtpjehafhldgohtqi.supabase.co")
 # DIQQAT: Bu yerda 'eyJ...' bilan boshlanadigan Service Role key bo'lishi shart!
 SUPABASE_KEY = os.getenv("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdmYXZ0cGplaGFmaGxkZ29odHFpIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NTIwNjM1NywiZXhwIjoyMDkwNzgyMzU3fQ.YSBR69mnnsdyC4LCX434TQki7T9rOSP13Z_LXRIY66s")
 TABLE_NAME = "accounts"

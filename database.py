@@ -5,15 +5,14 @@ from supabase import acreate_client, AsyncClient
 # Loglarni sozlash
 logger = logging.getLogger(__name__)
 
-# GitHub Secrets'dan Supabase ma'lumotlarini olish
+# Muhit o'zgaruvchilari (Environment Variables)
+# MUHIM: Railway yoki GitHub Secrets-da ushbu nomlar aniq bo'lishi shart
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 
 TABLE_NAME = "accounts"
 
-# Async Supabase client (lazily initialized)
 _client: AsyncClient | None = None
-
 
 async def get_db() -> AsyncClient | None:
     """Supabase async client singleton."""
@@ -21,21 +20,19 @@ async def get_db() -> AsyncClient | None:
     if _client is not None:
         return _client
 
+    # URL va KEY borligini tekshirish
     if not SUPABASE_URL or not SUPABASE_KEY:
-        logger.error(
-            "SUPABASE_URL yoki SUPABASE_KEY topilmadi. "
-            "GitHub Secrets'ni tekshiring."
-        )
+        logger.error("SUPABASE_URL yoki SUPABASE_KEY topilmadi! Muhit o'zgaruvchilarini tekshiring.")
         return None
 
     try:
+        # Client yaratishda xatolik yuz bersa tutib qolamiz
         _client = await acreate_client(SUPABASE_URL, SUPABASE_KEY)
         logger.info("Supabase'ga muvaffaqiyatli ulandi.")
         return _client
     except Exception as e:
-        logger.error(f"Supabase'ga ulanishda xato: {e}")
+        logger.error(f"Supabase klientini yaratishda xato: {e}")
         return None
-
 
 async def get_all_accounts() -> list[dict]:
     """Bazadagi barcha o'quvchilarni qaytaradi."""
@@ -43,59 +40,33 @@ async def get_all_accounts() -> list[dict]:
     if client is None:
         return []
     try:
-        response = await client.table(TABLE_NAME).select("*").execute()
-        # response.data — list of dicts with keys: id, login, password, chat_id
-        return response.data or []
+        # execute() natijasini tekshirish
+        result = await client.table(TABLE_NAME).select("*").execute()
+        
+        # Supabase-py yangi versiyalarida ma'lumot .data ichida bo'ladi
+        if hasattr(result, 'data'):
+            return result.data or []
+        return []
     except Exception as e:
-        logger.error(f"Supabase'dan ma'lumot olishda xato: {e}")
+        logger.error(f"Ma'lumot olishda xato: {e}")
         return []
 
-
-async def add_account(login: str, password: str, chat_id: int = 6291811673) -> None:
-    """
-    Yangi o'quvchi qo'shadi yoki mavjud loginni yangilaydi (upsert).
-    Supabase upsert uchun PRIMARY KEY yoki UNIQUE constraint kerak
-    (accounts jadvalidagi 'login' ustunida UNIQUE bo'lishi shart).
-    """
+async def add_account(login: str, password: str, chat_id: int = 6291811673) -> bool:
+    """Yangi o'quvchi qo'shadi yoki mavjudini yangilaydi."""
     client = await get_db()
     if client is None:
-        return
+        return False
     try:
-        await (
-            client.table(TABLE_NAME)
-            .upsert(
-                {
-                    "login": login.strip(),
-                    "password": str(password),
-                    "chat_id": chat_id,
-                },
-                on_conflict="login",   # UNIQUE ustun nomi
-            )
-            .execute()
-        )
-        logger.info(f"Hisob qo'shildi/yangilandi: {login.strip()}")
+        await client.table(TABLE_NAME).upsert(
+            {
+                "login": login.strip(),
+                "password": str(password),
+                "chat_id": chat_id,
+            },
+            on_conflict="login"
+        ).execute()
+        logger.info(f"Muvaffaqiyatli saqlandi: {login}")
+        return True
     except Exception as e:
-        logger.error(f"Ma'lumot qo'shishda xato: {e}")
-
-
-async def remove_account(key: str) -> dict:
-    """Login bo'yicha o'quvchini o'chiradi."""
-    client = await get_db()
-    if client is None:
-        return {"error": "Bazaga ulanish xatosi."}
-
-    login_str = str(key).strip()
-    try:
-        response = (
-            await client.table(TABLE_NAME)
-            .delete()
-            .eq("login", login_str)
-            .execute()
-        )
-        # response.data — o'chirilgan qatorlar ro'yxati
-        if response.data:
-            return {"removed": True, "login": login_str}
-        else:
-            return {"error": "Bunday login topilmadi."}
-    except Exception as e:
-        return {"error": f"O'chirishda xato yuz berdi: {e}"}
+        logger.error(f"Upsert xatosi: {e}")
+        return False

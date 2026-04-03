@@ -31,30 +31,31 @@ async def run_cron():
         return
 
     bot = Bot(token=BOT_TOKEN)
-    
+
     logger.info("Starting eMaktab cron job...")
-    
+
     # DNS/Network retry logic for Errno -5 (Temporary failure in name resolution)
     max_retries = 5
-    retry_delay = 10 # seconds
-    
+    retry_delay = 10  # seconds
+
     for attempt in range(max_retries):
         try:
-            # Test connectivity to telegram or emaktab
             socket.gethostbyname('api.telegram.org')
             break
         except socket.gaierror as e:
             if attempt < max_retries - 1:
-                logger.warning(f"DNS resolution failed (attempt {attempt+1}/{max_retries}): {e}. Retrying in {retry_delay}s...")
+                logger.warning(
+                    f"DNS resolution failed (attempt {attempt+1}/{max_retries}): {e}. "
+                    f"Retrying in {retry_delay}s..."
+                )
                 await asyncio.sleep(retry_delay)
             else:
                 logger.error(f"DNS resolution failed after {max_retries} attempts. Exiting.")
                 return
 
     try:
-        # Run automation
         results = await automation.run_all_screenshots()
-        
+
         if not results:
             logger.info("No accounts processed.")
             await bot.send_message(chat_id=ADMIN_ID, text="Cron: No accounts found in database.")
@@ -69,31 +70,37 @@ async def run_cron():
                             photo=photo,
                             caption=f"eMaktab: {r['login']}"
                         )
-                    # Optional: cleanup screenshot after sending
-                    # os.remove(r['path'])
+                    # os.remove(r['path'])  # Screenshot'ni o'chirish (ixtiyoriy)
                 except Exception as e:
                     logger.error(f"Failed to send photo for {r['login']}: {e}")
-                    await bot.send_message(chat_id=ADMIN_ID, text=f"Screenshot failed for {r['login']}: {e}")
+                    await bot.send_message(
+                        chat_id=ADMIN_ID,
+                        text=f"Screenshot failed for {r['login']}: {e}"
+                    )
             else:
                 logger.error(f"Login failed for {r['login']}: {r.get('error')}")
-                await bot.send_message(chat_id=ADMIN_ID, text=f"Login failed for {r['login']}: {r.get('error', 'Unknown error')}")
+                await bot.send_message(
+                    chat_id=ADMIN_ID,
+                    text=f"Login failed for {r['login']}: {r.get('error', 'Unknown error')}"
+                )
 
         logger.info("Cron job completed successfully.")
-        
+
     except Exception as e:
         logger.error(f"Unexpected error in cron job: {e}")
         try:
             await bot.send_message(chat_id=ADMIN_ID, text=f"Cron error: {str(e)}")
-        except:
+        except Exception:
             pass
 
 async def main():
     try:
         await run_cron()
     finally:
-        # Ensure telegram bot session is closed (if applicable/needed)
-        # In python-telegram-bot v20+, Bot class doesn't have close() but we should be careful with asyncio
-        pass
+        # Supabase async client ni yopish — event loop xatosining oldini oladi
+        if database._client is not None:
+            await database._client.aclose()
+            logger.info("Supabase client yopildi.")
 
 if __name__ == "__main__":
     try:

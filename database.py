@@ -7,8 +7,8 @@ logger = logging.getLogger(__name__)
 
 # Muhit o'zgaruvchilari (Environment Variables)
 # MUHIM: Railway yoki GitHub Secrets-da ushbu nomlar aniq bo'lishi shart
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+SUPABASE_URL = os.getenv("https://gfavtpjehafhldgohtqi.supabase.co")
+SUPABASE_KEY = os.getenv("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdmYXZ0cGplaGFmaGxkZ29odHFpIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NTIwNjM1NywiZXhwIjoyMDkwNzgyMzU3fQ.YSBR69mnnsdyC4LCX434TQki7T9rOSP13Z_LXRIY66s")
 
 TABLE_NAME = "accounts"
 

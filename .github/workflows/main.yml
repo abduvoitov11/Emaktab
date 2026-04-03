@@ -24,5 +24,13 @@ jobs:
       - name: Botni ishga tushirish
         env:
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
-          MONGODB_URI: ${{ secrets.MONGODB_URI }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
         run: python main_cron.py
+
+
+
+
+
+
+

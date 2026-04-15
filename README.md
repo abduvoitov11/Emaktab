@@ -1,2 +1,1 @@
-# Emaktab
-Avtomatlashtirilgan Emaktab 👨‍💻 🔐
+# EMAKTAB 🔐

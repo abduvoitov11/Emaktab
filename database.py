@@ -7,13 +7,10 @@ from supabase import acreate_client, AsyncClient
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Muhit o'zgaruvchilari (Railway yoki GitHub Secrets-dan olinadi)
 SUPABASE_URL = os.getenv("SUPABASE_URL")
-# DIQQAT: Bu yerda 'eyJ...' bilan boshlanadigan Service Role key bo'lishi shart!
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 TABLE_NAME = "accounts"
 
-# Singleton klienti
 _client: Optional[AsyncClient] = None
 
 async def get_db() -> Optional[AsyncClient]:

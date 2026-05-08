@@ -71,7 +71,7 @@ async def run_all_screenshots() -> list[dict]:
     results = []
 
     if not accounts:
-        logger.warning("Bazada hisoblar topilmadi. Database ulanishini tekshiring!")
+        logger.warning("Databaseni  tekshiring!")
         return results
 
     for acc in accounts:

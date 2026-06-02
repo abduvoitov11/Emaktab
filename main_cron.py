@@ -5,11 +5,10 @@ import socket
 from telegram import Bot
 from dotenv import load_dotenv
 
-# Import local modules
+
 import automation
 import database
 
-# Load environment variables
 load_dotenv()
 
 # Logging setup

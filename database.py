@@ -3,7 +3,6 @@ import logging
 from typing import List, Dict, Optional
 from supabase import acreate_client, AsyncClient
 
-# Loglarni sozlash - muammolarni aniqlash uchun muhim
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 

@@ -30,10 +30,10 @@ async def login_and_screenshot(login: str, password: str) -> dict:
         page = await context.new_page()
 
         try:
-            # 1. Sahifaga o'tish
+            
             await page.goto(LOGIN_URL, wait_until="domcontentloaded", timeout=60000)
             
-            # 2. Login va Parolni kiritish (aniqroq selectorlar bilan)
+             
             await page.wait_for_selector('input[name="login"]', timeout=20000)
             await page.fill('input[name="login"]', login)
             await page.fill('input[name="password"]', password)

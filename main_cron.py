@@ -11,13 +11,13 @@ import database
 
 load_dotenv()
 
-# Logging setup
+
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
 )
 logger = logging.getLogger(__name__)
 
-# Constants
+
 ADMIN_ID = int(os.getenv("ADMIN_ID", "6291811673"))
 BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN") or os.getenv("BOT_TOKEN")
 

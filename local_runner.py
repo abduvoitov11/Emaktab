@@ -4,12 +4,11 @@ import openpyxl
 from playwright.async_api import async_playwright
 from telegram import Bot
 
-# ================== SOZLAMALAR ==================
+
 EXCEL_FILE = "/home/torabek/Downloads/Foydalanuvchilar_Royxati.xlsx"
 BOT_TOKEN = "8375587042:AAGfQNUc_3LzpTHBIPsyNHxw8AHfFV9CyXU" # O'zgartirishingiz kerak!
 LOGIN_URL = "https://login.emaktab.uz/"
 SCREENSHOTS_DIR = "/home/torabek/Desktop/Emaktab_Local/screenshots"
-# ================================================
 
 async def run_local_automation():
 

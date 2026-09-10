@@ -4,6 +4,7 @@ import html
 import asyncio
 import random
 import logging
+import subprocess
 from datetime import datetime
 import zoneinfo
 import openpyxl
@@ -25,17 +26,17 @@ DEFAULT_EXCEL = os.path.join(BASE_DIR, "Foydalanuvchilar_Royxati.xlsx")
 if not os.path.exists(DEFAULT_EXCEL):
     DEFAULT_EXCEL = "/home/torabek/Downloads/Foydalanuvchilar_Royxati.xlsx"
 EXCEL_FILE = os.getenv("EXCEL_FILE", DEFAULT_EXCEL)
-SCREENSHOTS_DIR = os.path.join(BASE_DIR, "screenshots")
+MEDIA_DIR = os.path.join(BASE_DIR, "media")
 
 greeted_recipients = set()
 
 
 def create_bot():
     request = HTTPXRequest(
-        connect_timeout=30.0,
-        read_timeout=30.0,
-        write_timeout=30.0,
-        pool_timeout=30.0
+        connect_timeout=60.0,
+        read_timeout=60.0,
+        write_timeout=60.0,
+        pool_timeout=60.0
     )
     return Bot(token=config.BOT_TOKEN, request=request)
 
@@ -121,7 +122,7 @@ async def send_greetings_if_needed(bot: Bot, sinf: str):
         admin_greeting = (
             "⚡ <b>Assalomu alaykum, Bosh Administrator!</b> 👑✨\n\n"
             "🚀 Bugungi eMaktab monitoring jarayoni boshlandi.\n"
-            "📊 <i>Barcha sinflar bo'yicha hisobotlar quyida qabul qilinmoqda...</i> ⬇️💎"
+            "📊 <i>Barcha sinflar bo'yicha rasm va videolar quyida qabul qilinmoqda...</i> ⬇️💎"
         )
         try:
             await bot.send_message(
@@ -130,7 +131,6 @@ async def send_greetings_if_needed(bot: Bot, sinf: str):
                 parse_mode=ParseMode.HTML
             )
             greeted_recipients.add(config.SUPER_ADMIN_ID)
-            logger.info("Bosh adminga salomnoma yuborildi.")
         except Exception as e:
             logger.error(f"Bosh adminga salom yuborishda xato: {e}")
 
@@ -142,7 +142,7 @@ async def send_greetings_if_needed(bot: Bot, sinf: str):
             teacher_greeting = (
                 f"🌸 <b>Assalomu alaykum, {html.escape(t_name)} ustoz!</b> 👋✨\n\n"
                 f"📋 <b>{html.escape(sinf)}</b> sinfingiz o'quvchilarining eMaktab kundalik ko'rik natijalari tayyorlandi.\n"
-                f"📸 <i>Quyida skrinshotlar qabul qilinmoqda...</i> ⬇️💎"
+                f"📸 <i>Quyida rasm va videolar qabul qilinmoqda...</i> ⬇️💎"
             )
             try:
                 await bot.send_message(
@@ -151,12 +151,11 @@ async def send_greetings_if_needed(bot: Bot, sinf: str):
                     parse_mode=ParseMode.HTML
                 )
                 greeted_recipients.add(t_id)
-                logger.info(f"{t_name} ustozga salomnoma yuborildi (ID: {t_id}).")
             except Exception as e:
                 logger.error(f"{t_name} ustozga salom yuborishda xato: {e}")
 
 
-async def send_screenshot(bot: Bot, photo_path: str, caption: str, sinf: str):
+async def send_media(bot: Bot, photo_path: str, video_path: str, caption: str, sinf: str):
     await send_greetings_if_needed(bot, sinf)
 
     recipients = {config.SUPER_ADMIN_ID}
@@ -165,6 +164,7 @@ async def send_screenshot(bot: Bot, photo_path: str, caption: str, sinf: str):
         recipients.add(int(teacher_info["chat_id"]))
 
     for chat_id in recipients:
+        # 1. Rasm yuborish
         for attempt in range(3):
             try:
                 with open(photo_path, "rb") as photo:
@@ -174,82 +174,126 @@ async def send_screenshot(bot: Bot, photo_path: str, caption: str, sinf: str):
                         caption=caption,
                         parse_mode=ParseMode.HTML
                     )
-                logger.info(f"Rasm muvaffaqiyatli yuborildi -> Telegram ID: {chat_id}")
                 break
             except Exception as e:
-                logger.warning(f"Rasm yuborishda xatolik (urinish {attempt+1}/3, ID: {chat_id}): {e}")
-                await asyncio.sleep(3)
+                logger.warning(f"Rasm yuborishda xato (urinish {attempt+1}/3): {e}")
+                await asyncio.sleep(2)
+
+        # 2. Video yuborish
+        for attempt in range(3):
+            try:
+                with open(video_path, "rb") as video:
+                    await bot.send_video(
+                        chat_id=chat_id,
+                        video=video,
+                        caption=caption,
+                        parse_mode=ParseMode.HTML,
+                        supports_streaming=True
+                    )
+                break
+            except Exception as e:
+                logger.warning(f"Video yuborishda xato (urinish {attempt+1}/3): {e}")
+                await asyncio.sleep(2)
 
 
-async def smooth_scroll(page, steps=4):
-    for _ in range(steps):
-        scroll_y = random.randint(150, 300)
+async def human_scroll_down_and_up(page):
+    """Tugmalarni bosmasdan, shu sahifada pastga tushib, yana tepaga qaytish."""
+    for _ in range(4):
+        scroll_y = random.randint(180, 260)
         await page.mouse.wheel(0, scroll_y)
-        await page.mouse.move(random.randint(100, 700), random.randint(200, 600))
-        await asyncio.sleep(random.uniform(1.0, 2.0))
-    await page.mouse.wheel(0, -random.randint(100, 200))
+        await page.mouse.move(random.randint(200, 600), random.randint(200, 500))
+        await asyncio.sleep(random.uniform(1.0, 1.5))
+
+    await asyncio.sleep(1.5)
+
+    for _ in range(4):
+        scroll_y = random.randint(180, 260)
+        await page.mouse.wheel(0, -scroll_y)
+        await page.mouse.move(random.randint(200, 600), random.randint(200, 500))
+        await asyncio.sleep(random.uniform(0.8, 1.3))
+
     await asyncio.sleep(1.0)
 
 
-async def process_account(page, bot: Bot, acc: dict):
+async def process_account(browser, bot: Bot, acc: dict):
     login = acc["login"]
     password = acc["password"]
     sinf = acc.get("sinf", "9-B")
 
-    logger.info(f"[*] Insoniy emulyatsiya bilan kirilmoqda: {login} (Sinf: {sinf})")
+    os.makedirs(MEDIA_DIR, exist_ok=True)
+    logger.info(f"[*] Kirilmoqda (Rasm + Video): {login} (Sinf: {sinf})")
+
+    context = await browser.new_context(
+        viewport={"width": 1280, "height": 720},
+        user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+        record_video_dir=MEDIA_DIR,
+        record_video_size={"width": 1280, "height": 720}
+    )
+    page = await context.new_page()
+
     try:
         await page.goto(config.LOGIN_URL, wait_until="domcontentloaded", timeout=60000)
         await page.wait_for_selector('input[name="login"]', timeout=15000)
-        await asyncio.sleep(random.uniform(0.8, 1.5))
+        await asyncio.sleep(1.0)
 
-        # Insondek harfma-harf terish
+        # Insondek terish
         for char in login:
-            await page.type('input[name="login"]', char, delay=random.randint(60, 130))
-        await asyncio.sleep(random.uniform(0.4, 0.9))
+            await page.type('input[name="login"]', char, delay=random.randint(60, 110))
+        await asyncio.sleep(0.5)
 
         for char in password:
-            await page.type('input[name="password"]', char, delay=random.randint(60, 130))
-        await asyncio.sleep(random.uniform(0.6, 1.2))
+            await page.type('input[name="password"]', char, delay=random.randint(60, 110))
+        await asyncio.sleep(0.8)
 
         await page.click('button[type="submit"], input[type="submit"]')
 
-        try:
-            await page.wait_for_selector('text="Chiqish"', timeout=15000)
-            logger.info(f"[+] {login} tizimga kirdi ('Chiqish' topildi)")
-        except Exception:
-            logger.warning(f"[!] {login} uchun 'Chiqish' topilmadi, davom etilmoqda.")
+        # 7-8 soniya sahifa to'liq yuklanishini kutish
+        logger.info(f"[~] {login} uchun 7.5 soniya sahifa yuklanishi kutilmoqda...")
+        await asyncio.sleep(7.5)
 
-        # Kundalik / dars jadvali sahifasiga o'tish
-        kundalik_link = await page.query_selector('a:has-text("Kundalik"), a:has-text("Dnevnik"), a:has-text("Dars jadvali")')
-        if kundalik_link:
-            try:
-                await kundalik_link.click()
-                await page.wait_for_load_state("domcontentloaded", timeout=10000)
-                logger.info("[+] Kundalik bo'limi ochildi.")
-            except Exception:
-                pass
+        # Boshqa tugmalarni bosmasdan shu sahifada scroll qilib pastga tushib, yana tepaga chiqish
+        logger.info(f"[~] {login} uchun sahifada insoniy scroll qilinmoqda...")
+        await human_scroll_down_and_up(page)
 
-        # Insondek o'qish, sahifani sekin aylantirish va sichqoncha harakati
-        await smooth_scroll(page, steps=3)
-        await asyncio.sleep(config.PAGE_LOAD_WAIT_SECONDS)
+        # Skrinshot olish
+        photo_path = os.path.join(MEDIA_DIR, f"{login}.png")
+        await page.screenshot(path=photo_path, full_page=False)
 
-        os.makedirs(SCREENSHOTS_DIR, exist_ok=True)
-        screenshot_path = os.path.join(SCREENSHOTS_DIR, f"{login}.png")
-        await page.screenshot(path=screenshot_path, full_page=False)
+        # Videoni saqlash va yopish
+        await page.close()
+        raw_video_path = await page.video.path()
+        await context.close()
 
+        # MP4 formatga o'tkazish
+        mp4_path = os.path.join(MEDIA_DIR, f"{login}.mp4")
+        cmd = [
+            "ffmpeg", "-y", "-i", raw_video_path,
+            "-c:v", "libx264", "-pix_fmt", "yuv420p", "-preset", "fast",
+            "-movflags", "+faststart", mp4_path
+        ]
+        subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
+
+        # Ortiqcha so'zlarsiz, toza va rasmiy izoh
         caption = (
             f"🏫 Sinf: <b>{html.escape(sinf)}</b>\n"
             f"👤 Login: <tg-spoiler>{html.escape(login)}</tg-spoiler>\n"
             f"🔑 Parol: <tg-spoiler>{html.escape(password)}</tg-spoiler>\n"
-            f"✅ Holat: Muvaffaqiyatli kirildi\n"
-            f"⏱ <i>Kundalik va darslar to'liq ko'zdan kechirildi</i>"
+            f"✅ Holat: Muvaffaqiyatli kirildi"
         )
 
-        await send_screenshot(bot, screenshot_path, caption, sinf)
-        await page.context.clear_cookies()
+        await send_media(bot, photo_path, mp4_path, caption, sinf)
+
+        # Tozalash
+        if os.path.exists(raw_video_path):
+            os.remove(raw_video_path)
+
         return True
     except Exception as e:
         logger.error(f"[-] {login} bilan ishlashda xatolik: {e}")
+        try:
+            await context.close()
+        except:
+            pass
         return False
 
 
@@ -320,16 +364,11 @@ async def run():
             headless=True,
             args=["--disable-blink-features=AutomationControlled"]
         )
-        context = await browser.new_context(
-            viewport={"width": 1366, "height": 768},
-            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
-        )
-        page = await context.new_page()
 
         success_count = 0
         for i, acc in enumerate(today_batch, 1):
             logger.info(f"[{i}/{len(today_batch)}] Ishlanmoqda...")
-            ok = await process_account(page, bot, acc)
+            ok = await process_account(browser, bot, acc)
             if ok:
                 success_count += 1
 
@@ -342,7 +381,7 @@ async def run():
 
     summary_msg = (
         f"📊 <b>Bugungi hisobot ({day_names.get(weekday, '')}):</b>\n"
-        f"✅ Muvaffaqiyatli tekshirildi: <b>{success_count} / {len(today_batch)}</b> ta hisob\n"
+        f"✅ Muvaffaqiyatli tekshirildi: <b>{success_count} / {len(today_batch)}</b> ta hisob (Rasm + Video)\n"
         f"⏱ Vaqt: {datetime.now(tashkent_tz).strftime('%H:%M:%S')}"
     )
     try:

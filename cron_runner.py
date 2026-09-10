@@ -72,36 +72,55 @@ def load_accounts_by_class(file_path: str):
 
 
 def generate_weekly_schedule(accounts: list, year: int, week: int):
+    """
+    Yangi haftalik jadval:
+    - Shanba (5): sekin boshlanadi (3-4 ta hisob)
+    - Yakshanba (6) - Payshanba (3): to'liq faol kunlar (6-9 ta hisob)
+    - Juma (4): UMUMAN KIRILMAYDI (0 hisob)
+    - 1 kunda limit: <= 11 ta
+    - 1 haftada hisob bo'yicha limit: <= 4 marta
+    """
     rng = random.Random(year * 1000 + week)
     shuffled = list(accounts)
     rng.shuffle(shuffled)
 
-    days = {0: [], 1: [], 2: [], 3: [], 4: []}
+    days = {0: [], 1: [], 2: [], 3: [], 4: [], 5: [], 6: []}
     counts = {acc["login"]: 0 for acc in accounts}
 
+    # Faol kunlar tartibi: Shanba(5), Yakshanba(6), Dushanba(0), Seshanba(1), Chorshanba(2), Payshanba(3)
+    active_days = [5, 6, 0, 1, 2, 3]
+
+    # Asosiy taqsimot
     n = len(shuffled)
-    base_per_day = n // 5
-    remainder = n % 5
-    distribution = [base_per_day + (1 if i < remainder else 0) for i in range(5)]
+    saturday_quota = min(3, n)
+    remaining_n = n - saturday_quota
+    base_per_day = remaining_n // 5
+    rem = remaining_n % 5
+
+    base_dist = {5: saturday_quota}
+    for i, d in enumerate([6, 0, 1, 2, 3]):
+        base_dist[d] = base_per_day + (1 if i < rem else 0)
 
     idx = 0
-    for d in range(5):
-        for _ in range(distribution[d]):
+    for d in active_days:
+        for _ in range(base_dist[d]):
             if idx < n:
                 acc = shuffled[idx]
                 days[d].append(acc)
                 counts[acc["login"]] += 1
                 idx += 1
 
-    for d in range(5):
+    # Takroriy kirishlar (haftalik limit 4, kunlik limit <= 10)
+    for d in active_days:
         current_logins = {acc["login"] for acc in days[d]}
         candidates = [
             acc for acc in accounts
             if acc["login"] not in current_logins and counts[acc["login"]] < config.WEEKLY_MAX_PER_ACCOUNT
         ]
         rng.shuffle(candidates)
-        available_slots = min(rng.randint(1, 2), config.DAILY_MAX_ACCOUNTS - 1 - len(days[d]))
-        for acc in candidates[:max(0, available_slots)]:
+        max_extra = 1 if d == 5 else 2
+        extra = min(rng.randint(0, max_extra), config.DAILY_MAX_ACCOUNTS - 1 - len(days[d]))
+        for acc in candidates[:max(0, extra)]:
             days[d].append(acc)
             counts[acc["login"]] += 1
 
@@ -109,8 +128,6 @@ def generate_weekly_schedule(accounts: list, year: int, week: int):
 
 
 async def send_greetings_if_needed(bot: Bot, sinf: str):
-    """Rasmlar yuborilishidan oldin ismini aytib, jonli animatsion emojilar bilan salom beradi."""
-    # 1. Bosh adminga salom
     if config.SUPER_ADMIN_ID not in greeted_recipients:
         admin_greeting = (
             "⚡ <b>Assalomu alaykum, Bosh Administrator!</b> 👑✨\n\n"
@@ -128,7 +145,6 @@ async def send_greetings_if_needed(bot: Bot, sinf: str):
         except Exception as e:
             logger.error(f"Bosh adminga salom yuborishda xato: {e}")
 
-    # 2. Tegishli sinf rahbariga salom
     teacher_info = config.TEACHERS.get(sinf)
     if teacher_info and "chat_id" in teacher_info:
         t_id = int(teacher_info["chat_id"])
@@ -222,10 +238,13 @@ async def run():
     tashkent_tz = zoneinfo.ZoneInfo("Asia/Tashkent")
     now = datetime.now(tashkent_tz)
     year, week, weekday_iso = now.isocalendar()
-    weekday = weekday_iso - 1
+    weekday = weekday_iso - 1  # 0=Dushanba, 1=Seshanba, ..., 4=Juma, 5=Shanba, 6=Yakshanba
 
-    day_names = ["Dushanba", "Seshanba", "Chorshanba", "Payshanba", "Juma", "Shanba", "Yakshanba"]
-    logger.info(f"Hozirgi vaqt (Toshkent): {now.strftime('%Y-%m-%d %H:%M:%S')}, {day_names[weekday]}")
+    day_names = {
+        0: "Dushanba", 1: "Seshanba", 2: "Chorshanba", 3: "Payshanba",
+        4: "Juma", 5: "Shanba", 6: "Yakshanba"
+    }
+    logger.info(f"Hozirgi vaqt (Toshkent): {now.strftime('%Y-%m-%d %H:%M:%S')}, {day_names.get(weekday, '')}")
 
     force_run = os.getenv("FORCE_RUN", "false").lower() == "true"
     custom_day = os.getenv("CUSTOM_DAY", "auto").lower()
@@ -240,9 +259,14 @@ async def run():
         weekday = 3
     elif custom_day in ["4", "fri", "juma"]:
         weekday = 4
+    elif custom_day in ["5", "sat", "shanba"]:
+        weekday = 5
+    elif custom_day in ["6", "sun", "yakshanba"]:
+        weekday = 6
 
-    if weekday >= 5 and not force_run:
-        logger.info("Dam olish kuni (Shanba/Yakshanba). Avtomatik ish to'xtatildi.")
+    # Juma kuni umuman kirilmaydi!
+    if weekday == 4 and not force_run:
+        logger.info("🛑 Bugun JUMA — dam olish kuni. eMaktabga kirish qat'iyan to'xtatildi!")
         return
 
     enable_jitter = os.getenv("ENABLE_JITTER", "true").lower() == "true"
@@ -259,14 +283,18 @@ async def run():
     today_batch = []
     for sinf_name, accounts in classes.items():
         schedule = generate_weekly_schedule(accounts, year, week)
-        today_accs = schedule.get(min(weekday, 4), [])
+        today_accs = schedule.get(weekday, [])
         today_batch.extend(today_accs)
 
     if len(today_batch) > config.DAILY_MAX_ACCOUNTS:
         logger.warning(f"Kunlik limit {config.DAILY_MAX_ACCOUNTS} tadan oshmasligi uchun {config.DAILY_MAX_ACCOUNTS} tagacha qisqartirildi.")
         today_batch = today_batch[:config.DAILY_MAX_ACCOUNTS]
 
-    logger.info(f"Bugungi ({day_names[min(weekday, 4)]}) navbatda {len(today_batch)} ta hisob bor.")
+    logger.info(f"Bugungi ({day_names.get(weekday, '')}) navbatda {len(today_batch)} ta hisob bor.")
+
+    if not today_batch:
+        logger.info("Bugun uchun rejalashtirilgan hisoblar yo'q.")
+        return
 
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=True)
@@ -288,7 +316,7 @@ async def run():
         await browser.close()
 
     summary_msg = (
-        f"📊 <b>Bugungi hisobot ({day_names[min(weekday, 4)]}):</b>\n"
+        f"📊 <b>Bugungi hisobot ({day_names.get(weekday, '')}):</b>\n"
         f"✅ Muvaffaqiyatli tekshirildi: <b>{success_count} / {len(today_batch)}</b> ta hisob\n"
         f"⏱ Vaqt: {datetime.now(tashkent_tz).strftime('%H:%M:%S')}"
     )

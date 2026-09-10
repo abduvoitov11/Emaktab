@@ -143,14 +143,14 @@ async def run_local():
     tashkent_tz = zoneinfo.ZoneInfo("Asia/Tashkent")
     now = datetime.now(tashkent_tz)
     if config.is_curfew_time(now):
-        print(f"\n🛑 DIQQAT: TUNGI XAVFSIZLIK TAQIQI (23:00 - 06:00) FAOL! ({now.strftime('%H:%M:%S')})")
+        print(f"\n🛑 DIQQAT: TUNGI XAVFSIZLIK TAQIQI (21:45 - 07:00) FAOL! ({now.strftime('%H:%M:%S')})")
         print("eMaktab.uz tizimiga tungi soatlarda kirish qat'iyan taqiqlangan (Anti-BAN xavfsizligi).")
-        print("Dastur ertalab soat 06:00 dan keyin ishga tushishi mumkin.\n")
+        print("Dastur ertalab soat 07:00 dan keyin ishga tushishi mumkin.\n")
         try:
             await bot.send_message(
                 chat_id=config.SUPER_ADMIN_ID,
                 text=(
-                    f"🛑 <b>TUNGI XAVFSIZLIK TAQIQI (23:00 - 06:00):</b>\n"
+                    f"🛑 <b>TUNGI XAVFSIZLIK TAQIQI (21:45 - 07:00):</b>\n"
                     f"Mahalliy ishga tushirish to'xtatildi. Tungi soatda eMaktabga login qilinmadi.\n"
                     f"⏱ Hozirgi vaqt: <b>{now.strftime('%H:%M:%S')}</b>"
                 ),
@@ -191,12 +191,12 @@ async def run_local():
         for i, acc in enumerate(accounts, 1):
             now_check = datetime.now(tashkent_tz)
             if config.is_curfew_time(now_check):
-                print(f"🛑 Vaqt 23:00 ga yetdi ({now_check.strftime('%H:%M:%S')})! Tungi taqiq kuchga kirdi. Qolgan hisoblar to'xtatildi.")
+                print(f"🛑 Vaqt 21:45 ga yetdi ({now_check.strftime('%H:%M:%S')})! Tungi taqiq kuchga kirdi. Qolgan hisoblar to'xtatildi.")
                 try:
                     await bot.send_message(
                         chat_id=config.SUPER_ADMIN_ID,
                         text=(
-                            f"🛑 <b>Vaqt 23:00 bo'ldi!</b> Tungi xavfsizlik taqiqi kuchga kirdi.\n"
+                            f"🛑 <b>Vaqt 21:45 bo'ldi!</b> Tungi xavfsizlik taqiqi kuchga kirdi.\n"
                             f"eMaktab xavfsizligi (anti-ban) uchun qolgan hisoblar to'xtatildi.\n"
                             f"✅ Muvaffaqiyatli yuborildi: <b>{success_count} / {len(accounts)}</b>"
                         ),
@@ -218,6 +218,12 @@ async def run_local():
                 record_video_size={"width": 1280, "height": 720}
             )
             page = await context.new_page()
+
+            now_check = datetime.now(tashkent_tz)
+            if config.is_curfew_time(now_check):
+                print(f"🛑 {login} uchun login bekor qilindi: Tungi taqiq (21:45 - 07:00) faol! ({now_check.strftime('%H:%M:%S')})")
+                await context.close()
+                break
 
             try:
                 await page.goto(config.LOGIN_URL, wait_until="domcontentloaded", timeout=60000)

@@ -221,7 +221,7 @@ async def process_account(browser, bot: Bot, acc: dict):
     tashkent_tz = zoneinfo.ZoneInfo("Asia/Tashkent")
     now_check = datetime.now(tashkent_tz)
     if config.is_curfew_time(now_check):
-        logger.warning(f"🛑 {login} uchun login bekor qilindi: Tungi taqiq (23:00 - 06:00) faol! ({now_check.strftime('%H:%M:%S')})")
+        logger.warning(f"🛑 {login} uchun login bekor qilindi: Tungi taqiq (21:45 - 07:00) faol! ({now_check.strftime('%H:%M:%S')})")
         return False
 
     os.makedirs(MEDIA_DIR, exist_ok=True)
@@ -350,16 +350,16 @@ async def run():
     }
     logger.info(f"Hozirgi vaqt (Toshkent): {now.strftime('%Y-%m-%d %H:%M:%S')}, {day_names.get(weekday, '')}")
 
-    # Tungi rejim taqiqi (23:00 - 06:00) — Bu vaqt oralig'ida login qilish qat'iyan taqiqlanadi
+    # Tungi rejim taqiqi (21:45 - 07:00) — Bu vaqt oralig'ida login qilish qat'iyan taqiqlanadi
     if config.is_curfew_time(now):
         curfew_msg = (
-            "🛑 <b>TUNGI XAVFSIZLIK TAQIQI (23:00 - 06:00):</b>\n"
-            "Tungi soatlarda eMaktab tizimiga login qilish xavfsizlik (anti-ban va "
+            "🛑 <b>TUNGI XAVFSIZLIK TAQIQI (21:45 - 07:00):</b>\n"
+            "Kechki va tungi soatlarda eMaktab tizimiga login qilish xavfsizlik (anti-ban va "
             "insoniy xatti-harakat) nuqtai nazaridan qat'iyan taqiqlangan!\n"
             f"⏱ Hozirgi Toshkent vaqti: <b>{now.strftime('%H:%M:%S')}</b>\n"
-            "Tizim ertalab soat 06:00 dan keyin qayta faollashadi."
+            "Tizim ertalab soat 07:00 dan keyin qayta faollashadi."
         )
-        logger.warning(f"🛑 TUNGI TAQIQ: Soat {now.strftime('%H:%M:%S')} — 23:00 dan 06:00 gacha login qilish qat'iyan taqiqlangan! Jarayon to'xtatildi.")
+        logger.warning(f"🛑 TUNGI TAQIQ: Soat {now.strftime('%H:%M:%S')} — 21:45 dan 07:00 gacha login qilish qat'iyan taqiqlangan! Jarayon to'xtatildi.")
         try:
             await bot.send_message(
                 chat_id=config.SUPER_ADMIN_ID,
@@ -436,12 +436,12 @@ async def run():
         for i, acc in enumerate(today_batch, 1):
             now_check = datetime.now(tashkent_tz)
             if config.is_curfew_time(now_check):
-                logger.warning(f"🛑 Vaqt 23:00 ga yetdi ({now_check.strftime('%H:%M:%S')})! Tungi xavfsizlik taqiqi kuchga kirdi. Qolgan hisoblar to'xtatildi.")
+                logger.warning(f"🛑 Vaqt 21:45 ga yetdi ({now_check.strftime('%H:%M:%S')})! Tungi xavfsizlik taqiqi kuchga kirdi. Qolgan hisoblar to'xtatildi.")
                 try:
                     await bot.send_message(
                         chat_id=config.SUPER_ADMIN_ID,
                         text=(
-                            f"🛑 <b>Vaqt 23:00 bo'ldi!</b> Tungi xavfsizlik taqiqi sababli jarayon to'xtatildi.\n"
+                            f"🛑 <b>Vaqt 21:45 bo'ldi!</b> Tungi xavfsizlik taqiqi sababli jarayon to'xtatildi.\n"
                             f"eMaktab xavfsizligi (anti-ban) uchun tungi loginlar taqiqlangan.\n"
                             f"✅ Muvaffaqiyatli yuborildi: <b>{success_count} / {len(today_batch)}</b>"
                         ),

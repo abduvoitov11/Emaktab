@@ -866,17 +866,20 @@
         <div class="price-card">
           <div>
             <h3>Katta Paket</h3>
-            <div style="font-size: 24px; font-weight: 700; color: var(--text-title); margin: 16px 0 6px;">2 - 5 ta sinf</div>
-            <p class="price-desc">Bir nechta parallel yoki do'stona sinflar uchun qulay yechim</p>
+            <div style="font-size: 24px; font-weight: 800; color: var(--primary); margin: 16px 0 6px;">Kelishilgan narxda</div>
+            <p class="price-desc">Admin bilan bog'lanib, sinflar va o'quvchilar soniga ko'ra kelishilgan holda tuziladi</p>
             <ul class="price-features">
               <li><i class="fa-solid fa-check"></i> 2 - 5 tagacha sinf (60-150 o'quvchi)</li>
               <li><i class="fa-solid fa-check"></i> Har bir ustozga faqat o'z sinfi hisoboti</li>
               <li><i class="fa-solid fa-check"></i> Bosh admin uchun umumiy xulosa</li>
               <li><i class="fa-solid fa-check"></i> Alohida guruhlangan Telegram albom</li>
+              <li><i class="fa-solid fa-check"></i> Admin bilan individual kelishilgan shartlar</li>
               <li><i class="fa-solid fa-check"></i> 24/7 Ustuvor texnik qo'llab-quvvatlash</li>
             </ul>
           </div>
-          <button class="btn-outline" style="width: 100%; justify-content: center;" onclick="selectPlan('Katta Paket (2-5 sinf)')">Tanlash</button>
+          <a href="https://t.me/Torabek_Abduvoitov?text=Assalomu%20alaykum!%20AvtoEmaktab%20orqali%20Katta%20Paket%20(2-5%20ta%20sinf)%20tarifi%20bo'yicha%20kelishmoqchiman." target="_blank" class="btn-outline" style="width: 100%; justify-content: center; text-decoration: none;">
+            <i class="fa-brands fa-telegram"></i> Bog'lanish (Admin)
+          </a>
         </div>
 
         <!-- Tier 2 (Eng Ommabop - Sinf Rahbar) -->
@@ -947,7 +950,7 @@
             <label for="planSelect">Tarifni tanlang *</label>
             <select id="planSelect" class="form-input" onchange="handlePlanChange()">
               <option value="Sinf Rahbar (1 000 so'm / o'quvchi)">Sinf Rahbar — 1 000 so'm / 1 o'quvchiga (Eng Ommabop)</option>
-              <option value="Katta Paket (2-5 sinf)">Katta Paket (2-5 ta sinf)</option>
+              <option value="Katta Paket (2-5 sinf)">Katta Paket (2-5 ta sinf) — Kelishilgan holda (Admin bilan)</option>
               <option value="Butun Maktab (300$)">Butun Maktab — 300$ / oyiga</option>
             </select>
           </div>
@@ -978,6 +981,17 @@
               <div id="calculationFormula" style="font-size: 12px; color: var(--text-body); margin-top: 2px;">
                 (30 ta o'quvchi × 1 000 so'm)
               </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Katta Paket Info Box -->
+        <div id="kattaPaketInfo" style="display: none; background: var(--calc-box-bg); border: 1px solid var(--primary); border-radius: var(--radius-md); padding: 16px 20px; margin-bottom: 22px; font-size: 14px; color: var(--text-body); line-height: 1.6;">
+          <div style="display: flex; align-items: flex-start; gap: 12px;">
+            <i class="fa-solid fa-handshake" style="color: var(--primary); font-size: 20px; margin-top: 2px;"></i>
+            <div>
+              <strong style="color: var(--text-title); font-size: 15px;">Katta Paket — Admin bilan kelishilgan holda tuziladi</strong><br>
+              Ushbu tarif 2-5 ta parallel yoki do'stona sinflar uchun sinflar va o'quvchilar soniga ko'ra individual belgilanadi. Ma'lumotlaringizni qoldirsangiz, Admin siz bilan tezda bog'lanib barcha shartlarni kelishib beradi.
             </div>
           </div>
         </div>
@@ -1057,13 +1071,20 @@
       const plan = document.getElementById('planSelect').value;
       const calcBox = document.getElementById('studentCalcBox');
       const studentInput = document.getElementById('studentCount');
+      const kattaPaketInfo = document.getElementById('kattaPaketInfo');
       
       if (plan.includes('Sinf Rahbar')) {
         calcBox.style.display = 'block';
+        if (kattaPaketInfo) kattaPaketInfo.style.display = 'none';
         studentInput.required = true;
         calculatePrice();
+      } else if (plan.includes('Katta Paket')) {
+        calcBox.style.display = 'none';
+        if (kattaPaketInfo) kattaPaketInfo.style.display = 'block';
+        studentInput.required = false;
       } else {
         calcBox.style.display = 'none';
+        if (kattaPaketInfo) kattaPaketInfo.style.display = 'none';
         studentInput.required = false;
       }
     }

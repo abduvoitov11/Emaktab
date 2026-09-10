@@ -877,6 +877,24 @@
         <!-- Tier 1 -->
         <div class="price-card">
           <div>
+            <h3>Katta Paket</h3>
+            <div style="font-size: 24px; font-weight: 700; color: var(--text-title); margin: 16px 0 6px;">2 - 5 ta sinf</div>
+            <p class="price-desc">Bir nechta parallel yoki do'stona sinflar uchun qulay yechim</p>
+            <ul class="price-features">
+              <li><i class="fa-solid fa-check"></i> 2 - 5 tagacha sinf (60-150 o'quvchi)</li>
+              <li><i class="fa-solid fa-check"></i> Har bir ustozga faqat o'z sinfi hisoboti</li>
+              <li><i class="fa-solid fa-check"></i> Bosh admin uchun umumiy xulosa</li>
+              <li><i class="fa-solid fa-check"></i> Alohida guruhlangan Telegram albom</li>
+              <li><i class="fa-solid fa-check"></i> 24/7 Ustuvor texnik qo'llab-quvvatlash</li>
+            </ul>
+          </div>
+          <button class="btn-outline" style="width: 100%; justify-content: center;" onclick="selectPlan('Katta Paket (2-5 sinf)')">Tanlash</button>
+        </div>
+
+        <!-- Tier 2 (Eng Ommabop - Sinf Rahbar) -->
+        <div class="price-card featured">
+          <div class="featured-ribbon">Eng Ommabop</div>
+          <div>
             <h3>Sinf Rahbar</h3>
             <div style="font-size: 34px; font-weight: 800; color: var(--primary); margin: 12px 0 6px;">1 000 <span style="font-size: 18px; font-weight: 700;">so'm</span> <span style="font-size: 14px; font-weight: 500; color: var(--text-body);">/ 1 o'quvchiga</span></div>
             <p class="price-desc">O'quvchilar soniga qarab (Masalan: 30 ta o'quvchi = 30 000 so'm / oyiga)</p>
@@ -888,31 +906,14 @@
               <li><i class="fa-solid fa-check"></i> 100% Anti-BAN himoyasi (21:45 taqiq)</li>
             </ul>
           </div>
-          <button class="btn-outline" style="width: 100%; justify-content: center;" onclick="selectPlan('Sinf Rahbar (1 000 so\'m / o\'quvchi)')">Tanlash (1 000 so'm)</button>
-        </div>
-
-        <!-- Tier 2 -->
-        <div class="price-card featured">
-          <div class="featured-ribbon">Eng Ommabop</div>
-          <div>
-            <h3>Katta Paket</h3>
-            <p class="price-desc">Bir nechta parallel yoki do'stona sinflar uchun</p>
-            <ul class="price-features">
-              <li><i class="fa-solid fa-check"></i> 2 - 5 tagacha sinf (60-150 hisob)</li>
-              <li><i class="fa-solid fa-check"></i> Har bir ustozga faqat o'z sinfi</li>
-              <li><i class="fa-solid fa-check"></i> Bosh admin uchun umumiy xulosa</li>
-              <li><i class="fa-solid fa-check"></i> Alohida guruhlangan Telegram albom</li>
-              <li><i class="fa-solid fa-check"></i> 24/7 Ustuvor texnik qo'llab-quvvatlash</li>
-            </ul>
-          </div>
-          <button class="btn-main" style="width: 100%; justify-content: center;" onclick="selectPlan('Katta Paket (2-5 sinf)')">Tanlash</button>
+          <button class="btn-main" style="width: 100%; justify-content: center;" onclick="selectPlan('Sinf Rahbar (1 000 so\'m / o\'quvchi)')">Buyurtma Berish (Eng Ommabop)</button>
         </div>
 
         <!-- Tier 3 -->
         <div class="price-card">
           <div>
             <h3>Butun Maktab</h3>
-            <div style="font-size: 38px; font-weight: 800; color: var(--primary); margin: 12px 0 6px;">220$ <span style="font-size: 15px; font-weight: 500; color: var(--text-body);">/ oyiga</span></div>
+            <div style="font-size: 38px; font-weight: 800; color: var(--primary); margin: 12px 0 6px;">300$ <span style="font-size: 15px; font-weight: 500; color: var(--text-body);">/ oyiga</span></div>
             <p class="price-desc">Maktab ma'muriyati va barcha sinf rahbarlari uchun to'liq kompleks yechim</p>
             <ul class="price-features">
               <li><i class="fa-solid fa-check"></i> Cheksiz sinflar va barcha o'quvchilar</li>
@@ -923,7 +924,7 @@
               <li><i class="fa-solid fa-check"></i> Shaxsiy menejer va 24/7 ustuvor yordam</li>
             </ul>
           </div>
-          <button class="btn-outline" style="width: 100%; justify-content: center;" onclick="selectPlan('Butun Maktab (220$)')">Buyurtma Berish (220$)</button>
+          <button class="btn-outline" style="width: 100%; justify-content: center;" onclick="selectPlan('Butun Maktab (300$)')">Buyurtma Berish (300$)</button>
         </div>
       </div>
     </div>
@@ -957,9 +958,9 @@
           <div class="form-group">
             <label for="planSelect">Tarifni tanlang</label>
             <select id="planSelect" class="form-input">
-              <option value="Sinf Rahbar (1 000 so'm / o'quvchi)">Sinf Rahbar — 1 000 so'm / 1 o'quvchiga</option>
+              <option value="Sinf Rahbar (1 000 so'm / o'quvchi)">Sinf Rahbar — 1 000 so'm / 1 o'quvchiga (Eng Ommabop)</option>
               <option value="Katta Paket (2-5 sinf)">Katta Paket (2-5 ta sinf)</option>
-              <option value="Butun Maktab (220$)">Butun Maktab — 220$ / oyiga</option>
+              <option value="Butun Maktab (300$)">Butun Maktab — 300$ / oyiga</option>
             </select>
           </div>
         </div>

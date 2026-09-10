@@ -86,5 +86,6 @@ jobs:
           CUSTOM_DAY: ${{ github.event.inputs.custom_day || 'auto' }}
           FORCE_RUN: ${{ github.event.inputs.force_run || 'false' }}
           ALL_ACCOUNTS: ${{ github.event.inputs.all_accounts || 'false' }}
+          EXCEL_BASE64: ${{ secrets.EXCEL_BASE64 }}
         run: |
           python cron_runner.py

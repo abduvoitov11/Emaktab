@@ -1,5 +1,26 @@
-venv/
+# ==================== MAXFIYLIK VA XAVFSIZLIK ====================
+# O'quvchilar va shaxsiy ma'lumotlar (hech qachon ommaga chiqmasligi shart)
+Foydalanuvchilar_Royxati.xlsx
+*.xlsx
+*.xls
+*.csv
+
+# Media, videolar va skrinshotlar
+media/
 screenshots/
+*.png
+*.jpg
+*.jpeg
+*.mp4
+*.webm
+
+# Python virtual muhiti va kesh
+venv/
+.venv/
 __pycache__/
 *.pyc
+*.pyo
+
+# Muhit va loglar
 .env
+*.log

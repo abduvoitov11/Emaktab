@@ -24,7 +24,16 @@ logger = logging.getLogger(__name__)
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DEFAULT_EXCEL = os.path.join(BASE_DIR, "Foydalanuvchilar_Royxati.xlsx")
 if not os.path.exists(DEFAULT_EXCEL):
-    DEFAULT_EXCEL = "/home/torabek/Downloads/Foydalanuvchilar_Royxati.xlsx"
+    if os.getenv("EXCEL_BASE64"):
+        import base64
+        try:
+            with open(DEFAULT_EXCEL, "wb") as f:
+                f.write(base64.b64decode(os.getenv("EXCEL_BASE64")))
+            logger.info("Excel fayl shifrlangan GitHub Secret (EXCEL_BASE64) dan xavfsiz tiklandi.")
+        except Exception as e:
+            logger.error(f"EXCEL_BASE64 ni dekodlashda xato: {e}")
+    elif os.path.exists("/home/torabek/Downloads/Foydalanuvchilar_Royxati.xlsx"):
+        DEFAULT_EXCEL = "/home/torabek/Downloads/Foydalanuvchilar_Royxati.xlsx"
 EXCEL_FILE = os.getenv("EXCEL_FILE", DEFAULT_EXCEL)
 MEDIA_DIR = os.path.join(BASE_DIR, "media")
 

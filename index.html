@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AvtoEmaktab — eMaktab.uz Avtomatlashtirilgan Monitoring Xizmati</title>
+  <meta name="description" content="eMaktab.uz uchun avtomatlashtirilgan aqlli monitoring. Kundalik dars jadvali va baholar hisoboti Telegram orqali video va rasm formatida.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <style>
+    :root {
+      --primary: #2563eb;
+      --primary-dark: #1d4ed8;
+      --accent: #10b981;
+      --bg-dark: #090d16;
+      --card-bg: #111827;
+      --card-border: #1f2937;
+      --text-main: #f3f4f6;
+      --text-muted: #9ca3af;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      overflow-x: hidden;
+      line-height: 1.6;
+    }
+
+    /* Gradient Background Glows */
+    .glow-1 {
+      position: absolute;
+      top: -100px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 600px;
+      height: 400px;
+      background: radial-gradient(circle, rgba(37, 99, 235, 0.25) 0%, rgba(0,0,0,0) 70%);
+      z-index: -1;
+      pointer-events: none;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    /* Navbar */
+    header {
+      padding: 20px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(12px);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(9, 13, 22, 0.85);
+    }
+
+    .nav-wrapper {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 22px;
+      font-weight: 800;
+      color: #fff;
+      text-decoration: none;
+    }
+
+    .logo i {
+      color: var(--primary);
+      font-size: 26px;
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 28px;
+      align-items: center;
+    }
+
+    .nav-links a {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 15px;
+      font-weight: 500;
+      transition: color 0.2s;
+    }
+
+    .nav-links a:hover {
+      color: #fff;
+    }
+
+    .btn-nav {
+      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+      color: #fff !important;
+      padding: 10px 22px;
+      border-radius: 99px;
+      font-weight: 600 !important;
+      box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .btn-nav:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(37, 99, 235, 0.5);
+    }
+
+    /* Hero Section */
+    .hero {
+      padding: 90px 0 60px;
+      text-align: center;
+      position: relative;
+    }
+
+    .badge-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 16px;
+      border-radius: 99px;
+      background: rgba(37, 99, 235, 0.15);
+      border: 1px solid rgba(37, 99, 235, 0.35);
+      color: #60a5fa;
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 24px;
+    }
+
+    .hero h1 {
+      font-size: 52px;
+      font-weight: 800;
+      line-height: 1.18;
+      margin-bottom: 22px;
+      letter-spacing: -0.02em;
+    }
+
+    .hero h1 span {
+      background: linear-gradient(135deg, #60a5fa, #34d399);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .hero p {
+      font-size: 19px;
+      color: var(--text-muted);
+      max-width: 720px;
+      margin: 0 auto 36px;
+    }
+
+    .hero-actions {
+      display: flex;
+      justify-content: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+      color: #fff;
+      padding: 15px 34px;
+      border-radius: 99px;
+      font-size: 16px;
+      font-weight: 700;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      box-shadow: 0 8px 24px rgba(37, 99, 235, 0.4);
+      transition: all 0.2s;
+      border: none;
+      cursor: pointer;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 30px rgba(37, 99, 235, 0.6);
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.06);
+      color: #fff;
+      padding: 15px 30px;
+      border-radius: 99px;
+      font-size: 16px;
+      font-weight: 600;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      transition: all 0.2s;
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.12);
+      transform: translateY(-2px);
+    }
+
+    /* Trust Highlights */
+    .trust-bar {
+      display: flex;
+      justify-content: center;
+      gap: 36px;
+      margin-top: 50px;
+      flex-wrap: wrap;
+      color: var(--text-muted);
+      font-size: 14px;
+    }
+
+    .trust-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .trust-item i {
+      color: var(--accent);
+    }
+
+    /* Features / How it works */
+    .section-title {
+      text-align: center;
+      margin-bottom: 50px;
+    }
+
+    .section-title h2 {
+      font-size: 36px;
+      font-weight: 800;
+      margin-bottom: 12px;
+    }
+
+    .section-title p {
+      color: var(--text-muted);
+      font-size: 17px;
+    }
+
+    .steps-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 28px;
+      margin-bottom: 80px;
+    }
+
+    .step-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 20px;
+      padding: 32px;
+      position: relative;
+      transition: transform 0.2s, border-color 0.2s;
+    }
+
+    .step-card:hover {
+      transform: translateY(-4px);
+      border-color: rgba(37, 99, 235, 0.4);
+    }
+
+    .step-num {
+      width: 48px;
+      height: 48px;
+      border-radius: 14px;
+      background: rgba(37, 99, 235, 0.15);
+      color: #60a5fa;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      font-weight: 800;
+      margin-bottom: 20px;
+    }
+
+    .step-card h3 {
+      font-size: 20px;
+      margin-bottom: 12px;
+    }
+
+    .step-card p {
+      color: var(--text-muted);
+      font-size: 15px;
+    }
+
+    /* Security Box */
+    .security-box {
+      background: linear-gradient(135deg, rgba(37, 99, 235, 0.08), rgba(16, 185, 129, 0.08));
+      border: 1px solid rgba(37, 99, 235, 0.25);
+      border-radius: 24px;
+      padding: 44px;
+      margin-bottom: 80px;
+    }
+
+    .sec-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 28px;
+      margin-top: 32px;
+    }
+
+    .sec-item {
+      display: flex;
+      gap: 16px;
+    }
+
+    .sec-item i {
+      font-size: 24px;
+      color: var(--accent);
+      margin-top: 4px;
+    }
+
+    .sec-item h4 {
+      font-size: 17px;
+      margin-bottom: 6px;
+    }
+
+    .sec-item p {
+      font-size: 14px;
+      color: var(--text-muted);
+    }
+
+    /* Pricing / Packages */
+    .pricing-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 28px;
+      margin-bottom: 80px;
+    }
+
+    .price-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 24px;
+      padding: 36px;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .price-card.featured {
+      border-color: var(--primary);
+      box-shadow: 0 0 35px rgba(37, 99, 235, 0.2);
+    }
+
+    .featured-badge {
+      position: absolute;
+      top: -12px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      color: #fff;
+      padding: 4px 16px;
+      border-radius: 99px;
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .price-card h3 {
+      font-size: 22px;
+      margin-bottom: 8px;
+    }
+
+    .price-card .price-desc {
+      color: var(--text-muted);
+      font-size: 14px;
+      margin-bottom: 24px;
+    }
+
+    .feature-list {
+      list-style: none;
+      margin-bottom: 30px;
+    }
+
+    .feature-list li {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 15px;
+      margin-bottom: 12px;
+      color: var(--text-main);
+    }
+
+    .feature-list li i {
+      color: var(--accent);
+      font-size: 14px;
+    }
+
+    /* Order Form Section */
+    .order-section {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 28px;
+      padding: 50px;
+      max-width: 760px;
+      margin: 0 auto 100px;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      color: #e5e7eb;
+    }
+
+    .form-control {
+      width: 100%;
+      padding: 14px 18px;
+      background: #090d16;
+      border: 1px solid #374151;
+      border-radius: 12px;
+      color: #fff;
+      font-size: 15px;
+      transition: border-color 0.2s;
+    }
+
+    .form-control:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+
+    textarea.form-control {
+      resize: vertical;
+      min-height: 100px;
+    }
+
+    /* Footer */
+    footer {
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 40px 0;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 14px;
+    }
+
+    /* Toast Notification */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: #10b981;
+      color: #fff;
+      padding: 16px 24px;
+      border-radius: 14px;
+      font-weight: 600;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+      display: none;
+      z-index: 1000;
+      animation: slideUp 0.3s ease;
+    }
+
+    @keyframes slideUp {
+      from { transform: translateY(100%); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+
+    @media (max-width: 768px) {
+      .hero h1 { font-size: 36px; }
+      .nav-links { display: none; }
+      .order-section { padding: 28px; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="glow-1"></div>
+
+  <!-- Header -->
+  <header>
+    <div class="container nav-wrapper">
+      <a href="#" class="logo">
+        <i class="fa-solid fa-graduation-cap"></i>
+        <span>AvtoEmaktab</span>
+      </a>
+      <div class="nav-links">
+        <a href="#afzalliklar">Afzalliklar</a>
+        <a href="#qanday-ishlaydi">Qanday ishlaydi?</a>
+        <a href="#xavfsizlik">Xavfsizlik</a>
+        <a href="#tariflar">Tariflar</a>
+        <a href="#buyurtma" class="btn-nav">Buyurtma berish</a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Hero Section -->
+  <section class="hero">
+    <div class="container">
+      <div class="badge-pill">
+        <i class="fa-solid fa-bolt"></i> 100% Avtomatlashtirilgan Aqlli Tizim
+      </div>
+      <h1>eMaktab hisobotlarini <span>bir zumda</span> avtomatlashtiring</h1>
+      <p>
+        Har kuni o'quvchilar profillarini birma-bir ochib, baho va davomatni tekshirishga soatlab vaqt sarflamang. 
+        Tizimimiz barchasini o'zi bajaradi va Telegramingizga HD video hamda rasm ko'rinishida yetkazadi!
+      </p>
+
+      <div class="hero-actions">
+        <a href="#buyurtma" class="btn-primary">
+          <i class="fa-solid fa-paper-plane"></i> Buyurtma berish
+        </a>
+        <a href="https://t.me/torax404_bot" target="_blank" class="btn-secondary">
+          <i class="fa-brands fa-telegram"></i> Telegram orqali bog'lanish
+        </a>
+      </div>
+
+      <div class="trust-bar">
+        <div class="trust-item"><i class="fa-solid fa-shield-check"></i> 100% Anti-BAN Kafolati</div>
+        <div class="trust-item"><i class="fa-solid fa-video"></i> Video + Skrinshot Isboti</div>
+        <div class="trust-item"><i class="fa-solid fa-lock"></i> Maxfiy Shifrlangan Tizim</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- How It Works -->
+  <section id="qanday-ishlaydi" style="padding: 70px 0;">
+    <div class="container">
+      <div class="section-title">
+        <h2>Qanday ishlaydi?</h2>
+        <p>Atigi 3 ta oddiy qadam bilan eMaktab nazoratini o'z qo'lingizga oling</p>
+      </div>
+
+      <div class="steps-grid">
+        <div class="step-card">
+          <div class="step-num">1</div>
+          <h3>Buyurtma qoldirasiz</h3>
+          <p>Sinfingiz yoki maktabingiz bo'yicha talablarni yuborasiz. Barcha sozlamalarni o'zimiz xavfsiz holatda tayyorlab beramiz.</p>
+        </div>
+        <div class="step-card">
+          <div class="step-num">2</div>
+          <h3>Aqlli tizim tekshiradi</h3>
+          <p>Har kuni dars jadvali tugagan paytlarda tizim o'quvchilar profiliga insondek sekin kiradi, baholar va dars jurnallarini varaqlaydi.</p>
+        </div>
+        <div class="step-card">
+          <div class="step-num">3</div>
+          <h3>Telegramda qabul qilasiz</h3>
+          <p>Har bir hisob bo'yicha tiniq skrinshot va MP4 formatidagi video hisobot avtomatik ravishda shaxsiy Telegramingizga kelib tushadi.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Security Section -->
+  <section id="xavfsizlik" style="padding: 20px 0;">
+    <div class="container">
+      <div class="security-box">
+        <div style="text-align: center; max-width: 650px; margin: 0 auto;">
+          <h2 style="font-size: 32px; font-weight: 800; margin-bottom: 12px;">🛡️ To'liq Xavfsizlik Kafolati</h2>
+          <p style="color: var(--text-muted); font-size: 16px;">Biz eMaktab.uz qoidalarini va xavfsizlik talablarini 100% hurmat qilamiz.</p>
+        </div>
+
+        <div class="sec-grid">
+          <div class="sec-item">
+            <i class="fa-solid fa-moon"></i>
+            <div>
+              <h4>Qat'iy Tungi Taqiq (21:45 - 07:00)</h4>
+              <p>Tizim kechki 21:45 dan ertalab 07:00 gacha mutlaqo dam oladi. Tunda hech qanday shubhali login urinishlari bo'lmaydi.</p>
+            </div>
+          </div>
+          <div class="sec-item">
+            <i class="fa-solid fa-keyboard"></i>
+            <div>
+              <h4>Insondek Terish Tezligi</h4>
+              <p>Harflar xuddi haqiqiy inson qo'lda yozayotgandek tasodifiy millisoniyalar (60-110ms) oralig'ida bittalab teriladi.</p>
+            </div>
+          </div>
+          <div class="sec-item">
+            <i class="fa-solid fa-shuffle"></i>
+            <div>
+              <h4>Tasodifiy Vaqt va Pauzalar</h4>
+              <p>Har bir hisob orasida 15-25 soniyalik tabiiy insoniy tanaffus qilinadi, robotlik belgilari butunlay yo'q qilinadi.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Pricing / Tariffs -->
+  <section id="tariflar" style="padding: 60px 0;">
+    <div class="container">
+      <div class="section-title">
+        <h2>Qulay Tariflar</h2>
+        <p>O'zingizga mos bo'lgan xizmat turini tanlang</p>
+      </div>
+
+      <div class="pricing-grid">
+        <div class="price-card">
+          <div>
+            <h3>Sinf Rahbar</h3>
+            <p class="price-desc">Aynan bitta sinfni to'liq nazorat qilish uchun</p>
+            <ul class="feature-list">
+              <li><i class="fa-solid fa-check"></i> 1 ta sinf (30-35 ta o'quvchi)</li>
+              <li><i class="fa-solid fa-check"></i> Kunlik HD Video va Rasm</li>
+              <li><i class="fa-solid fa-check"></i> Shaxsiy Telegramga yetkazish</li>
+              <li><i class="fa-solid fa-check"></i> 100% Anti-BAN himoyasi</li>
+            </ul>
+          </div>
+          <a href="#buyurtma" class="btn-secondary" style="text-align: center; justify-content: center;">Tanlash</a>
+        </div>
+
+        <div class="price-card featured">
+          <div class="featured-badge">Eng Ommabop</div>
+          <div>
+            <h3>Katta Paket</h3>
+            <p class="price-desc">Bir nechta sinf yoki parallel sinflar uchun</p>
+            <ul class="feature-list">
+              <li><i class="fa-solid fa-check"></i> 2 - 5 tagacha sinf</li>
+              <li><i class="fa-solid fa-check"></i> Har bir ustozga o'z sinfi hisoboti</li>
+              <li><i class="fa-solid fa-check"></i> Super-Admin uchun umumiy xulosa</li>
+              <li><i class="fa-solid fa-check"></i> 24/7 Ustuvor texnik yordam</li>
+            </ul>
+          </div>
+          <a href="#buyurtma" class="btn-primary" style="text-align: center; justify-content: center;">Tanlash</a>
+        </div>
+
+        <div class="price-card">
+          <div>
+            <h3>Butun Maktab</h3>
+            <p class="price-desc">Maktab ma'muriyati va barcha sinflar uchun</p>
+            <ul class="feature-list">
+              <li><i class="fa-solid fa-check"></i> Cheksiz sinflar va hisoblar</li>
+              <li><i class="fa-solid fa-check"></i> To'liq Ierarxiya va avtomatika</li>
+              <li><i class="fa-solid fa-check"></i> Maxsus server sozlamasi</li>
+              <li><i class="fa-solid fa-check"></i> Alohida menejer biriktiriladi</li>
+            </ul>
+          </div>
+          <a href="#buyurtma" class="btn-secondary" style="text-align: center; justify-content: center;">Bog'lanish</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Order Form Section -->
+  <section id="buyurtma" style="padding: 40px 0 100px;">
+    <div class="container">
+      <div class="order-section">
+        <div style="text-align: center; margin-bottom: 36px;">
+          <h2 style="font-size: 32px; font-weight: 800; margin-bottom: 8px;">Buyurtma Qoldirish</h2>
+          <p style="color: var(--text-muted);">Ma'lumotlaringizni qoldiring, tez orada siz bilan bog'lanamiz!</p>
+        </div>
+
+        <form id="orderForm">
+          <div class="form-group">
+            <label for="name">Ism va Familiyangiz *</label>
+            <input type="text" id="name" class="form-control" placeholder="Masalan: Sardor Rahimov" required>
+          </div>
+
+          <div class="form-group">
+            <label for="phone">Telefon Raqamingiz *</label>
+            <input type="tel" id="phone" class="form-control" placeholder="+998 90 123 45 67" required>
+          </div>
+
+          <div class="form-group">
+            <label for="telegram">Telegram Profilingiz (@username) *</label>
+            <input type="text" id="telegram" class="form-control" placeholder="@foydalanuvchi" required>
+          </div>
+
+          <div class="form-group">
+            <label for="plan">Qaysi tarif sizga kerak?</label>
+            <select id="plan" class="form-control">
+              <option value="Sinf Rahbar (1 ta sinf)">Sinf Rahbar (1 ta sinf)</option>
+              <option value="Katta Paket (2-5 sinf)">Katta Paket (2-5 ta sinf)</option>
+              <option value="Butun Maktab">Butun Maktab</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="message">Qo'shimcha izoh yoki savollaringiz</label>
+            <textarea id="message" class="form-control" placeholder="Sinfingiz yoki o'quvchilar soni haqida ma'lumot..."></textarea>
+          </div>
+
+          <button type="submit" class="btn-primary" style="width: 100%; justify-content: center; font-size: 17px; margin-top: 10px;">
+            <i class="fa-solid fa-paper-plane"></i> Buyurtmani Yuborish
+          </button>
+        </form>
+
+        <div style="text-align: center; margin-top: 24px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.08);">
+          <p style="font-size: 14px; color: var(--text-muted); margin-bottom: 12px;">Yoki to'g'ridan-to'g'ri Telegramdan yozing:</p>
+          <a href="https://t.me/torax404_bot" target="_blank" style="color: #60a5fa; text-decoration: none; font-weight: 600; display: inline-flex; align-items: center; gap: 8px;">
+            <i class="fa-brands fa-telegram"></i> @torax404_bot ga yozish
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer>
+    <div class="container">
+      <p>© 2026 AvtoEmaktab. Barcha huquqlar himoyalangan.</p>
+      <p style="font-size: 13px; margin-top: 6px; color: #6b7280;">eMaktab.uz tizimi monitoringini qulay va xavfsiz avtomatlashtirish xizmati.</p>
+    </div>
+  </footer>
+
+  <!-- Toast -->
+  <div id="toast" class="toast">
+    <i class="fa-solid fa-circle-check"></i> Rahmat! Buyurtmangiz qabul qilindi. Tez orada bog'lanamiz.
+  </div>
+
+  <script>
+    document.getElementById('orderForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      
+      const name = document.getElementById('name').value.trim();
+      const phone = document.getElementById('phone').value.trim();
+      const telegram = document.getElementById('telegram').value.trim();
+      const plan = document.getElementById('plan').value;
+      const message = document.getElementById('message').value.trim();
+
+      const text = `🎓 Yangi Buyurtma (AvtoEmaktab):\n👤 Ism: ${name}\n📞 Tel: ${phone}\n💬 Telegram: ${telegram}\n📦 Tarif: ${plan}\n📝 Izoh: ${message || "Yo'q"}`;
+      
+      // Open Telegram direct link to send the order
+      const tgUrl = `https://t.me/torax404_bot?text=${encodeURIComponent(text)}`;
+      
+      const toast = document.getElementById('toast');
+      toast.style.display = 'block';
+      
+      setTimeout(() => {
+        window.open(tgUrl, '_blank');
+        toast.style.display = 'none';
+        document.getElementById('orderForm').reset();
+      }, 1000);
+    });
+  </script>
+</body>
+</html>

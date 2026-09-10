@@ -956,12 +956,41 @@
             <input type="text" id="userTelegram" class="form-input" placeholder="@jasur_aliyev" required>
           </div>
           <div class="form-group">
-            <label for="planSelect">Tarifni tanlang</label>
-            <select id="planSelect" class="form-input">
+            <label for="planSelect">Tarifni tanlang *</label>
+            <select id="planSelect" class="form-input" onchange="handlePlanChange()">
               <option value="Sinf Rahbar (1 000 so'm / o'quvchi)">Sinf Rahbar — 1 000 so'm / 1 o'quvchiga (Eng Ommabop)</option>
               <option value="Katta Paket (2-5 sinf)">Katta Paket (2-5 ta sinf)</option>
               <option value="Butun Maktab (300$)">Butun Maktab — 300$ / oyiga</option>
             </select>
+          </div>
+        </div>
+
+        <!-- Dynamic Student Count & Price Calculator (Shows for Sinf Rahbar) -->
+        <div id="studentCalcBox" style="background: rgba(37, 99, 235, 0.08); border: 1px solid var(--primary); border-radius: var(--radius-md); padding: 18px 22px; margin-bottom: 22px; transition: all 0.3s ease;">
+          <div class="form-row" style="align-items: center; margin-bottom: 0;">
+            <div class="form-group" style="margin-bottom: 0;">
+              <label for="studentCount" style="display: flex; align-items: center; justify-content: space-between;">
+                <span><i class="fa-solid fa-users" style="color: var(--primary); margin-right: 6px;"></i> Sinfdagi o'quvchilar soni *</span>
+                <span style="font-size: 12px; color: var(--primary); font-weight: 700; background: rgba(37, 99, 235, 0.15); padding: 2px 8px; border-radius: 99px;">1 000 so'm / o'quvchi</span>
+              </label>
+              <input type="number" id="studentCount" class="form-input" value="30" min="1" max="150" placeholder="Masalan: 32" oninput="calculatePrice()">
+              <div style="display: flex; gap: 8px; margin-top: 8px; align-items: center; flex-wrap: wrap;">
+                <span style="font-size: 12px; color: var(--text-body);">Tez tanlash:</span>
+                <button type="button" class="btn-outline" style="padding: 2px 10px; font-size: 12px; border-radius: 6px; cursor: pointer;" onclick="setStudentCount(25)">25</button>
+                <button type="button" class="btn-outline" style="padding: 2px 10px; font-size: 12px; border-radius: 6px; cursor: pointer;" onclick="setStudentCount(30)">30</button>
+                <button type="button" class="btn-outline" style="padding: 2px 10px; font-size: 12px; border-radius: 6px; cursor: pointer;" onclick="setStudentCount(35)">35</button>
+                <button type="button" class="btn-outline" style="padding: 2px 10px; font-size: 12px; border-radius: 6px; cursor: pointer;" onclick="setStudentCount(40)">40</button>
+              </div>
+            </div>
+            <div style="padding: 14px 18px; background: var(--bg); border-radius: var(--radius-sm); border: 1px dashed var(--primary); text-align: center;">
+              <div style="font-size: 12px; color: var(--text-body); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700;">Jami Oylik To'lov:</div>
+              <div id="calculatedTotalDisplay" style="font-size: 26px; font-weight: 800; color: var(--primary);">
+                30 000 <span style="font-size: 15px; font-weight: 600;">so'm / oyiga</span>
+              </div>
+              <div id="calculationFormula" style="font-size: 12px; color: var(--text-body); margin-top: 2px;">
+                (30 ta o'quvchi × 1 000 so'm)
+              </div>
+            </div>
           </div>
         </div>
 
@@ -1016,8 +1045,62 @@
     // Select Plan from Cards
     function selectPlan(planName) {
       document.getElementById('planSelect').value = planName;
+      handlePlanChange();
       document.getElementById('buyurtma').scrollIntoView({ behavior: 'smooth' });
+      if (planName.includes('Sinf Rahbar')) {
+        setTimeout(() => {
+          const input = document.getElementById('studentCount');
+          if (input) {
+            input.focus();
+            input.select();
+          }
+        }, 400);
+      }
     }
+
+    // Dynamic Plan Change Handler
+    function handlePlanChange() {
+      const plan = document.getElementById('planSelect').value;
+      const calcBox = document.getElementById('studentCalcBox');
+      const studentInput = document.getElementById('studentCount');
+      
+      if (plan.includes('Sinf Rahbar')) {
+        calcBox.style.display = 'block';
+        studentInput.required = true;
+        calculatePrice();
+      } else {
+        calcBox.style.display = 'none';
+        studentInput.required = false;
+      }
+    }
+
+    // Set Student Count Preset
+    function setStudentCount(num) {
+      document.getElementById('studentCount').value = num;
+      calculatePrice();
+    }
+
+    // Real-time Student Price Calculator
+    function calculatePrice() {
+      const input = document.getElementById('studentCount');
+      let count = parseInt(input.value);
+      if (isNaN(count) || count < 0) count = 0;
+      
+      const total = count * 1000;
+      const formattedTotal = total.toLocaleString('uz-UZ').replace(/,/g, ' ');
+      
+      const display = document.getElementById('calculatedTotalDisplay');
+      const formula = document.getElementById('calculationFormula');
+      if (display) {
+        display.innerHTML = `${formattedTotal} <span style="font-size: 15px; font-weight: 600;">so'm / oyiga</span>`;
+      }
+      if (formula) {
+        formula.innerText = `(${count} ta o'quvchi × 1 000 so'm)`;
+      }
+    }
+
+    // Initialize Calculator State on Load
+    handlePlanChange();
 
     // Real-time Tashkent Curfew Radar Clock
     function updateCurfewStatus() {
@@ -1059,7 +1142,16 @@
       const plan = document.getElementById('planSelect').value;
       const comment = document.getElementById('userComment').value.trim();
 
-      const text = `🎓 Yangi Buyurtma (AvtoEmaktab):\n👤 Ism: ${name}\n📞 Tel: ${phone}\n💬 Telegram: ${telegram}\n📦 Tarif: ${plan}\n📝 Izoh: ${comment || "Yo'q"}`;
+      let planDetails = plan;
+      if (plan.includes('Sinf Rahbar')) {
+        const count = parseInt(document.getElementById('studentCount').value) || 0;
+        const total = (count * 1000).toLocaleString('uz-UZ').replace(/,/g, ' ');
+        planDetails = `${plan}\n👥 O'quvchilar soni: ${count} ta\n💰 Oylik to'lov: ${total} so'm`;
+      } else if (plan.includes('Butun Maktab')) {
+        planDetails = `${plan} (300$ / oyiga)`;
+      }
+
+      const text = `🎓 Yangi Buyurtma (AvtoEmaktab):\n👤 Ism: ${name}\n📞 Tel: ${phone}\n💬 Telegram: ${telegram}\n📦 Tarif: ${planDetails}\n📝 Izoh: ${comment || "Yo'q"}`;
       
       const tgUrl = `https://t.me/Torabek_Abduvoitov?text=${encodeURIComponent(text)}`;
       
@@ -1070,6 +1162,7 @@
         window.open(tgUrl, '_blank');
         toast.style.display = 'none';
         document.getElementById('orderForm').reset();
+        handlePlanChange();
       }, 1200);
     });
   </script>

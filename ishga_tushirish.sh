@@ -1,10 +1,11 @@
 #!/bin/bash
-cd /home/torabek/Desktop/Emaktab_Local
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+cd "$DIR"
 
 if [ ! -d "venv" ]; then
     echo "Kutubxonalar o'rnatilmoqda (bu faqat birinchi marta bo'ladi)..."
     python3 -m venv venv
-    ./venv/bin/pip install openpyxl playwright python-telegram-bot
+    ./venv/bin/pip install -r requirements.txt
     ./venv/bin/playwright install chromium
 fi
 

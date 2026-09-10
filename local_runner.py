@@ -4,18 +4,23 @@ import openpyxl
 from playwright.async_api import async_playwright
 from telegram import Bot
 
+# ================== SOZLAMALAR ==================
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DEFAULT_EXCEL = os.path.join(BASE_DIR, "Foydalanuvchilar_Royxati.xlsx")
+if not os.path.exists(DEFAULT_EXCEL):
+    DEFAULT_EXCEL = "/home/torabek/Downloads/Foydalanuvchilar_Royxati.xlsx"
+EXCEL_FILE = os.getenv("EXCEL_FILE", DEFAULT_EXCEL)
 
-EXCEL_FILE = "/home/torabek/Downloads/Foydalanuvchilar_Royxati.xlsx"
-BOT_TOKEN = "8375587042:AAGfQNUc_3LzpTHBIPsyNHxw8AHfFV9CyXU" # O'zgartirishingiz kerak!
+BOT_TOKEN = "8375587042:AAGfQNUc_3LzpTHBIPsyNHxw8AHfFV9CyXU"
 LOGIN_URL = "https://login.emaktab.uz/"
-SCREENSHOTS_DIR = "/home/torabek/Desktop/Emaktab_Local/screenshots"
+SCREENSHOTS_DIR = os.path.join(BASE_DIR, "screenshots")
+# ================================================
 
 async def run_local_automation():
-
     bot = Bot(token=BOT_TOKEN)
     os.makedirs(SCREENSHOTS_DIR, exist_ok=True)
     
-    print("Excel fayldan ma'lumotlar o'qilmoqda...")
+    print(f"Excel fayldan ma'lumotlar o'qilmoqda: {EXCEL_FILE}...")
     wb = openpyxl.load_workbook(EXCEL_FILE)
     ws = wb.active
     
@@ -36,7 +41,6 @@ async def run_local_automation():
     print(f"Jami {len(accounts)} ta hisob topildi. Dastur ishga tushmoqda...")
 
     async with async_playwright() as p:
-        # Brauzerni ishga tushirish
         browser = await p.chromium.launch(headless=True)
         context = await browser.new_context(viewport={"width": 1280, "height": 720})
         page = await context.new_page()
@@ -56,14 +60,16 @@ async def run_local_automation():
                 # Kirish tugmasini bosish
                 await page.click('button[type="submit"], input[type="submit"]')
                 
-                # Tizimga kirishni tasdiqlash uchun kutish
+                # Tizimga kirishni tekshirish
                 try:
                     await page.wait_for_selector('text="Chiqish"', timeout=10000)
+                    print(f"[+] {login} tizimga muvaffaqiyatli kirdi!")
                 except:
                     print(f"[!] {login} uchun 'Chiqish' so'zi topilmadi, baribir rasmga olinadi.")
 
                 print(f"[~] {login} uchun sahifa to`liq yuklanishini 7 soniya kutmoqdamiz...")
                 await page.wait_for_timeout(7000)
+
                 # Skrinshot olish
                 screenshot_path = os.path.join(SCREENSHOTS_DIR, f"{login}.png")
                 await page.screenshot(path=screenshot_path)
@@ -72,7 +78,7 @@ async def run_local_automation():
                 with open(screenshot_path, 'rb') as photo:
                     await bot.send_photo(chat_id=chat_id, photo=photo, caption=f"eMaktab: {login} profiliga muvaffaqiyatli kirildi.")
                 
-                # Keyingi hisob uchun brauzerni tozalash
+                # Keyingi hisob uchun tozalash
                 await page.context.clear_cookies()
 
             except Exception as e:

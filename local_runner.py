@@ -140,6 +140,26 @@ async def run_local():
     bot = create_bot()
     os.makedirs(MEDIA_DIR, exist_ok=True)
 
+    tashkent_tz = zoneinfo.ZoneInfo("Asia/Tashkent")
+    now = datetime.now(tashkent_tz)
+    if config.is_curfew_time(now):
+        print(f"\n🛑 DIQQAT: TUNGI XAVFSIZLIK TAQIQI (23:00 - 06:00) FAOL! ({now.strftime('%H:%M:%S')})")
+        print("eMaktab.uz tizimiga tungi soatlarda kirish qat'iyan taqiqlangan (Anti-BAN xavfsizligi).")
+        print("Dastur ertalab soat 06:00 dan keyin ishga tushishi mumkin.\n")
+        try:
+            await bot.send_message(
+                chat_id=config.SUPER_ADMIN_ID,
+                text=(
+                    f"🛑 <b>TUNGI XAVFSIZLIK TAQIQI (23:00 - 06:00):</b>\n"
+                    f"Mahalliy ishga tushirish to'xtatildi. Tungi soatda eMaktabga login qilinmadi.\n"
+                    f"⏱ Hozirgi vaqt: <b>{now.strftime('%H:%M:%S')}</b>"
+                ),
+                parse_mode=ParseMode.HTML
+            )
+        except Exception:
+            pass
+        return
+
     print(f"Excel fayldan ma'lumotlar o'qilmoqda: {EXCEL_FILE}...")
     wb = openpyxl.load_workbook(EXCEL_FILE, data_only=True)
     ws = wb.active
@@ -169,6 +189,23 @@ async def run_local():
 
         success_count = 0
         for i, acc in enumerate(accounts, 1):
+            now_check = datetime.now(tashkent_tz)
+            if config.is_curfew_time(now_check):
+                print(f"🛑 Vaqt 23:00 ga yetdi ({now_check.strftime('%H:%M:%S')})! Tungi taqiq kuchga kirdi. Qolgan hisoblar to'xtatildi.")
+                try:
+                    await bot.send_message(
+                        chat_id=config.SUPER_ADMIN_ID,
+                        text=(
+                            f"🛑 <b>Vaqt 23:00 bo'ldi!</b> Tungi xavfsizlik taqiqi kuchga kirdi.\n"
+                            f"eMaktab xavfsizligi (anti-ban) uchun qolgan hisoblar to'xtatildi.\n"
+                            f"✅ Muvaffaqiyatli yuborildi: <b>{success_count} / {len(accounts)}</b>"
+                        ),
+                        parse_mode=ParseMode.HTML
+                    )
+                except Exception:
+                    pass
+                break
+
             login = acc["login"]
             password = acc["password"]
             sinf = acc["sinf"]

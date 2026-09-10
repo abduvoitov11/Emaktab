@@ -40,3 +40,24 @@ MAX_HUMAN_PAUSE_SECONDS = 45  # Hisoblar orasidagi maksimal insoniy pauza
 # Boshlanishdagi tasodifiy kechikish (jitter) — sekundlarda
 MIN_STARTUP_JITTER_SECONDS = 60   # 1 daqiqa
 MAX_STARTUP_JITTER_SECONDS = 300  # 5 daqiqa
+
+# ==================== 5. TUNGI REJIM VA XAVFSIZLIK (23:00 - 06:00) ====================
+# eMaktab.uz tizimida o'quvchilar va o'qituvchilar tungi soatlarda faol bo'lmaydi.
+# Tizim xavfsizligi, anti-ban va insoniy xatti-harakat qoidalariga ko'ra
+# soat 23:00 dan 06:00 gacha har qanday login urinishi QAT'IYAN TAQIQLANADI!
+CURFEW_START_HOUR = 23  # 23:00
+CURFEW_END_HOUR = 6     # 06:00
+
+
+def is_curfew_time(dt=None) -> bool:
+    """
+    Toshkent vaqti bo'yicha tungi taqiq (23:00 - 06:00) faol ekanligini tekshiradi.
+    23:00:00 dan 05:59:59 oralig'ida True, boshqa payt False qaytaradi.
+    """
+    if dt is None:
+        import zoneinfo
+        from datetime import datetime
+        tashkent_tz = zoneinfo.ZoneInfo("Asia/Tashkent")
+        dt = datetime.now(tashkent_tz)
+    return dt.hour >= CURFEW_START_HOUR or dt.hour < CURFEW_END_HOUR
+

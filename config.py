@@ -14,11 +14,11 @@ TEACHERS = {
         "name": "Zuhra",
         "chat_id": 896459615
     },
-    "9-A": {
+    "3-D": {
         "name": "Muhayyo",
         "chat_id": 624782674
     },
-    "MUHAYYO": {
+    "3D": {
         "name": "Muhayyo",
         "chat_id": 624782674
     }

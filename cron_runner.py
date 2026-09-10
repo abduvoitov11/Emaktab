@@ -377,17 +377,24 @@ async def run():
         logger.error("Hech qanday hisob topilmadi!")
         return
 
-    today_batch = []
-    for sinf_name, accounts in classes.items():
-        schedule = generate_weekly_schedule(accounts, year, week)
-        today_accs = schedule.get(weekday, [])
-        today_batch.extend(today_accs)
+    all_accounts = os.getenv("ALL_ACCOUNTS", "false").lower() == "true"
+    if all_accounts:
+        today_batch = []
+        for sinf_name, acc_list in classes.items():
+            today_batch.extend(acc_list)
+        logger.info(f"⚡ TO'LIQ IERARXIYA REJIMI (ALL_ACCOUNTS=True): Jami {len(today_batch)} ta hisobga kiriladi!")
+    else:
+        today_batch = []
+        for sinf_name, accounts in classes.items():
+            schedule = generate_weekly_schedule(accounts, year, week)
+            today_accs = schedule.get(weekday, [])
+            today_batch.extend(today_accs)
 
-    if len(today_batch) > config.DAILY_MAX_ACCOUNTS:
-        logger.warning(f"Kunlik limit {config.DAILY_MAX_ACCOUNTS} tadan oshmasligi uchun qisqartirildi.")
-        today_batch = today_batch[:config.DAILY_MAX_ACCOUNTS]
+        if len(today_batch) > config.DAILY_MAX_ACCOUNTS:
+            logger.warning(f"Kunlik limit {config.DAILY_MAX_ACCOUNTS} tadan oshmasligi uchun qisqartirildi.")
+            today_batch = today_batch[:config.DAILY_MAX_ACCOUNTS]
 
-    logger.info(f"Bugungi ({day_names.get(weekday, '')}) navbatda {len(today_batch)} ta hisob bor.")
+        logger.info(f"Bugungi ({day_names.get(weekday, '')}) navbatda {len(today_batch)} ta hisob bor.")
 
     if not today_batch:
         logger.info("Bugun uchun hisoblar belgilanmagan.")

@@ -5,6 +5,8 @@ import asyncio
 import random
 import logging
 import subprocess
+from datetime import datetime
+import zoneinfo
 import openpyxl
 from playwright.async_api import async_playwright
 from telegram import Bot, InputMediaPhoto, InputMediaVideo
@@ -165,11 +167,12 @@ async def run_local():
             args=["--disable-blink-features=AutomationControlled"]
         )
 
-        for acc in accounts:
+        success_count = 0
+        for i, acc in enumerate(accounts, 1):
             login = acc["login"]
             password = acc["password"]
             sinf = acc["sinf"]
-            print(f"[*] Kirish: {login} (Sinf: {sinf})...")
+            print(f"[{i}/{len(accounts)}] Kirish: {login} (Sinf: {sinf})...")
 
             context = await browser.new_context(
                 viewport={"width": 1280, "height": 720},
@@ -255,6 +258,7 @@ async def run_local():
                 )
 
                 await send_media(bot, photo_path, mp4_path, caption, sinf)
+                success_count += 1
 
                 if os.path.exists(raw_video_path):
                     os.remove(raw_video_path)
@@ -266,7 +270,28 @@ async def run_local():
                 except:
                     pass
 
+            if i < len(accounts):
+                pause = random.randint(12, 22)
+                print(f"Insoniy pauza: {pause} soniya kutilmoqda...")
+                await asyncio.sleep(pause)
+
         await browser.close()
+
+    tashkent_tz = zoneinfo.ZoneInfo("Asia/Tashkent")
+    summary_msg = (
+        f"📊 <b>Umumiy monitoring hisoboti (To'liq Ierarxiya):</b>\n"
+        f"✅ Muvaffaqiyatli tekshirildi: <b>{success_count} / {len(accounts)}</b> ta hisob (Rasm + Video)\n"
+        f"⏱ Tugallangan vaqt: {datetime.now(tashkent_tz).strftime('%H:%M:%S')}"
+    )
+    try:
+        await bot.send_message(
+            chat_id=config.SUPER_ADMIN_ID,
+            text=summary_msg,
+            parse_mode=ParseMode.HTML
+        )
+    except Exception as e:
+        logger.error(f"Xulosa xabarini yuborishda xato: {e}")
+
     print("Barcha vazifalar yakunlandi!")
 
 

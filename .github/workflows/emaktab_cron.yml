@@ -42,6 +42,11 @@ on:
         required: false
         default: true
         type: boolean
+      all_accounts:
+        description: "Barcha 35 ta hisobga to'liq kirish (Ierarxiya bo'yicha)"
+        required: false
+        default: false
+        type: boolean
 
 jobs:
   run-emaktab:
@@ -80,5 +85,6 @@ jobs:
           ENABLE_JITTER: ${{ github.event.inputs.enable_jitter || 'true' }}
           CUSTOM_DAY: ${{ github.event.inputs.custom_day || 'auto' }}
           FORCE_RUN: ${{ github.event.inputs.force_run || 'false' }}
+          ALL_ACCOUNTS: ${{ github.event.inputs.all_accounts || 'false' }}
         run: |
           python cron_runner.py

@@ -12,7 +12,7 @@
   
   <style>
     /* ==================== BENTO-GRID NEON DESIGN SYSTEM ==================== */
-    :root {
+    :root, html[data-theme="dark"] {
       --bg: #030712;
       --bg-surface: #080f21;
       --card-bg: #0c162d;
@@ -24,12 +24,38 @@
       --accent-glow: rgba(16, 185, 129, 0.35);
       --text-title: #ffffff;
       --text-body: #94a3b8;
+      --nav-bg: rgba(8, 15, 33, 0.88);
+      --input-bg: #030712;
+      --box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+      --calc-box-bg: rgba(6, 182, 212, 0.08);
+      --calc-total-bg: #030712;
+      --node-bg: rgba(255, 255, 255, 0.03);
       --font-body: 'Plus Jakarta Sans', sans-serif;
       --font-heading: 'Space Grotesk', sans-serif;
       --radius-sm: 10px;
       --radius-md: 18px;
       --radius-lg: 26px;
-      --transition-speed: 0.3s;
+      --transition-speed: 0.25s;
+    }
+
+    html[data-theme="light"] {
+      --bg: #f8fafc;
+      --bg-surface: #ffffff;
+      --card-bg: #ffffff;
+      --card-border: #e2e8f0;
+      --primary: #0284c7;
+      --primary-hover: #0369a1;
+      --primary-glow: rgba(2, 132, 199, 0.2);
+      --accent: #059669;
+      --accent-glow: rgba(5, 150, 105, 0.2);
+      --text-title: #0f172a;
+      --text-body: #475569;
+      --nav-bg: rgba(255, 255, 255, 0.92);
+      --input-bg: #f1f5f9;
+      --box-shadow: 0 10px 30px rgba(0, 0, 0, 0.06);
+      --calc-box-bg: rgba(2, 132, 199, 0.06);
+      --calc-total-bg: #f8fafc;
+      --node-bg: #f8fafc;
     }
 
     /* Base Reset */
@@ -78,7 +104,7 @@
       position: sticky;
       top: 0;
       z-index: 1000;
-      background: rgba(8, 15, 33, 0.88);
+      background: var(--nav-bg);
       backdrop-filter: blur(14px);
       border-bottom: 1px solid var(--card-border);
       padding: 16px 0;
@@ -110,7 +136,7 @@
     .nav-links {
       display: flex;
       align-items: center;
-      gap: 24px;
+      gap: 20px;
     }
 
     .nav-link {
@@ -122,7 +148,43 @@
     }
 
     .nav-link:hover {
+      color: var(--text-title);
+    }
+
+    /* Theme Toggle Buttons (Dark & White) */
+    .theme-toggle-group {
+      display: inline-flex;
+      background: var(--bg-surface);
+      border: 1px solid var(--card-border);
+      border-radius: 99px;
+      padding: 3px;
+      gap: 3px;
+      align-items: center;
+    }
+
+    .theme-toggle-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: none;
+      border: none;
+      padding: 5px 12px;
+      border-radius: 99px;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text-body);
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .theme-toggle-btn:hover {
+      color: var(--text-title);
+    }
+
+    .theme-toggle-btn.active {
+      background: var(--primary);
       color: #fff;
+      box-shadow: 0 2px 8px var(--primary-glow);
     }
 
     .btn-nav-action {
@@ -511,7 +573,7 @@
       padding: 48px;
       max-width: 740px;
       margin: 0 auto 100px;
-      box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+      box-shadow: var(--box-shadow);
     }
 
     .form-row {
@@ -535,10 +597,10 @@
     .form-input {
       width: 100%;
       padding: 14px 18px;
-      background: var(--bg);
+      background: var(--input-bg);
       border: 1px solid var(--card-border);
       border-radius: var(--radius-md);
-      color: #fff;
+      color: var(--text-title);
       font-size: 15px;
     }
 
@@ -594,6 +656,11 @@
       .form-row { grid-template-columns: 1fr; }
       .nav-links .nav-link { display: none; }
       .order-box { padding: 28px; }
+      .theme-toggle-btn { padding: 5px 9px; font-size: 12px; }
+    }
+
+    @media (max-width: 480px) {
+      .theme-toggle-btn span { display: none; }
     }
   </style>
 </head>
@@ -612,6 +679,17 @@
       <nav class="nav-links">
         <a href="#imkoniyatlar" class="nav-link">Imkoniyatlar</a>
         <a href="#tariflar" class="nav-link">Tariflar</a>
+
+        <!-- Dark / White Theme Toggle Buttons -->
+        <div class="theme-toggle-group" title="Mavzuni almashtirish">
+          <button type="button" class="theme-toggle-btn active" id="darkThemeBtn" onclick="setTheme('dark')">
+            <i class="fa-solid fa-moon"></i> <span>Dark</span>
+          </button>
+          <button type="button" class="theme-toggle-btn" id="whiteThemeBtn" onclick="setTheme('light')">
+            <i class="fa-solid fa-sun"></i> <span>White</span>
+          </button>
+        </div>
+
         <a href="#buyurtma" class="btn-nav-action">
           <i class="fa-solid fa-paper-plane"></i> Buyurtma Berish
         </a>
@@ -876,12 +954,12 @@
         </div>
 
         <!-- Dynamic Student Count & Price Calculator (Shows for Sinf Rahbar) -->
-        <div id="studentCalcBox" style="background: rgba(37, 99, 235, 0.08); border: 1px solid var(--primary); border-radius: var(--radius-md); padding: 18px 22px; margin-bottom: 22px; transition: all 0.3s ease;">
+        <div id="studentCalcBox" style="background: var(--calc-box-bg); border: 1px solid var(--primary); border-radius: var(--radius-md); padding: 18px 22px; margin-bottom: 22px; transition: all 0.3s ease;">
           <div class="form-row" style="align-items: center; margin-bottom: 0;">
             <div class="form-group" style="margin-bottom: 0;">
               <label for="studentCount" style="display: flex; align-items: center; justify-content: space-between;">
                 <span><i class="fa-solid fa-users" style="color: var(--primary); margin-right: 6px;"></i> Sinfdagi o'quvchilar soni *</span>
-                <span style="font-size: 12px; color: var(--primary); font-weight: 700; background: rgba(37, 99, 235, 0.15); padding: 2px 8px; border-radius: 99px;">1 000 so'm / o'quvchi</span>
+                <span style="font-size: 12px; color: var(--primary); font-weight: 700; background: rgba(6, 182, 212, 0.15); padding: 2px 8px; border-radius: 99px;">1 000 so'm / o'quvchi</span>
               </label>
               <input type="number" id="studentCount" class="form-input" value="30" min="1" max="150" placeholder="Masalan: 32" oninput="calculatePrice()">
               <div style="display: flex; gap: 8px; margin-top: 8px; align-items: center; flex-wrap: wrap;">
@@ -892,7 +970,7 @@
                 <button type="button" class="btn-outline" style="padding: 2px 10px; font-size: 12px; border-radius: 6px; cursor: pointer;" onclick="setStudentCount(40)">40</button>
               </div>
             </div>
-            <div style="padding: 14px 18px; background: var(--bg); border-radius: var(--radius-sm); border: 1px dashed var(--primary); text-align: center;">
+            <div style="padding: 14px 18px; background: var(--calc-total-bg); border-radius: var(--radius-sm); border: 1px dashed var(--primary); text-align: center;">
               <div style="font-size: 12px; color: var(--text-body); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700;">Jami Oylik To'lov:</div>
               <div id="calculatedTotalDisplay" style="font-size: 26px; font-weight: 800; color: var(--primary);">
                 30 000 <span style="font-size: 15px; font-weight: 600;">so'm / oyiga</span>
@@ -937,8 +1015,26 @@
   </div>
 
   <script>
-    // Clear legacy theme storage
-    localStorage.removeItem('avtoemaktab_theme');
+    // Dark & White Theme Switcher
+    function setTheme(theme) {
+      const darkBtn = document.getElementById('darkThemeBtn');
+      const whiteBtn = document.getElementById('whiteThemeBtn');
+      if (theme === 'light') {
+        document.documentElement.setAttribute('data-theme', 'light');
+        if (whiteBtn) whiteBtn.classList.add('active');
+        if (darkBtn) darkBtn.classList.remove('active');
+        localStorage.setItem('emaktab_theme_mode', 'light');
+      } else {
+        document.documentElement.setAttribute('data-theme', 'dark');
+        if (darkBtn) darkBtn.classList.add('active');
+        if (whiteBtn) whiteBtn.classList.remove('active');
+        localStorage.setItem('emaktab_theme_mode', 'dark');
+      }
+    }
+
+    // Restore saved theme mode (Default: dark)
+    const savedThemeMode = localStorage.getItem('emaktab_theme_mode') || 'dark';
+    setTheme(savedThemeMode);
 
     // Select Plan from Cards
     function selectPlan(planName) {
@@ -1040,17 +1136,39 @@
       const plan = document.getElementById('planSelect').value;
       const comment = document.getElementById('userComment').value.trim();
 
-      let planDetails = plan;
+      let serviceName = "Sinf Rahbar";
+      let quantity = "30 ta o'quvchi";
+      let price = "30 000 so'm / oyiga";
+
       if (plan.includes('Sinf Rahbar')) {
-        const count = parseInt(document.getElementById('studentCount').value) || 0;
+        serviceName = "Sinf Rahbar";
+        const count = parseInt(document.getElementById('studentCount').value) || 30;
+        quantity = `${count} ta o'quvchi`;
         const total = (count * 1000).toLocaleString('uz-UZ').replace(/,/g, ' ');
-        planDetails = `${plan}\n👥 O'quvchilar soni: ${count} ta\n💰 Oylik to'lov: ${total} so'm`;
+        price = `${total} so'm / oyiga`;
+      } else if (plan.includes('Katta Paket')) {
+        serviceName = "Katta Paket (2-5 sinf)";
+        quantity = "2 - 5 ta sinf";
+        price = "Kelishilgan";
       } else if (plan.includes('Butun Maktab')) {
-        planDetails = `${plan} (300$ / oyiga)`;
+        serviceName = "Butun Maktab";
+        quantity = "Barcha sinflar va o'quvchilar";
+        price = "300$ / oyiga";
       }
 
-      const text = `🎓 Yangi Buyurtma (AvtoEmaktab):\n👤 Ism: ${name}\n📞 Tel: ${phone}\n💬 Telegram: ${telegram}\n📦 Tarif: ${planDetails}\n📝 Izoh: ${comment || "Yo'q"}`;
-      
+      let text = `Assalomu alaykum! AvtoEmaktab orqali buyurtma bermoqchiman:\n\n` +
+                 `Xizmat: ${serviceName}\n` +
+                 `Miqdor: ${quantity}\n` +
+                 `Narx: ${price}\n` +
+                 `Yetkazib berish: 1 soat\n` +
+                 `Ism: ${name}\n` +
+                 `Telefon: ${phone}\n` +
+                 `Telegram: ${telegram}`;
+
+      if (comment) {
+        text += `\nIzoh: ${comment}`;
+      }
+
       const tgUrl = `https://t.me/Torabek_Abduvoitov?text=${encodeURIComponent(text)}`;
       
       const toast = document.getElementById('toast');

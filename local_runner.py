@@ -6,6 +6,7 @@ import logging
 import openpyxl
 from playwright.async_api import async_playwright
 from telegram import Bot
+from telegram.request import HTTPXRequest
 from telegram.constants import ParseMode
 
 import config
@@ -23,9 +24,59 @@ if not os.path.exists(DEFAULT_EXCEL):
 EXCEL_FILE = os.getenv("EXCEL_FILE", DEFAULT_EXCEL)
 SCREENSHOTS_DIR = os.path.join(BASE_DIR, "screenshots")
 
+greeted_recipients = set()
+
+
+def create_bot():
+    request = HTTPXRequest(
+        connect_timeout=30.0,
+        read_timeout=30.0,
+        write_timeout=30.0,
+        pool_timeout=30.0
+    )
+    return Bot(token=config.BOT_TOKEN, request=request)
+
+
+async def send_greetings_if_needed(bot: Bot, sinf: str):
+    if config.SUPER_ADMIN_ID not in greeted_recipients:
+        admin_greeting = (
+            "⚡ <b>Assalomu alaykum, Bosh Administrator!</b> 👑✨\n\n"
+            "🚀 Bugungi eMaktab monitoring jarayoni boshlandi.\n"
+            "📊 <i>Barcha sinflar bo'yicha hisobotlar quyida qabul qilinmoqda...</i> ⬇️💎"
+        )
+        try:
+            await bot.send_message(
+                chat_id=config.SUPER_ADMIN_ID,
+                text=admin_greeting,
+                parse_mode=ParseMode.HTML
+            )
+            greeted_recipients.add(config.SUPER_ADMIN_ID)
+        except Exception as e:
+            logger.error(f"Bosh adminga salom yuborishda xato: {e}")
+
+    teacher_info = config.TEACHERS.get(sinf)
+    if teacher_info and "chat_id" in teacher_info:
+        t_id = int(teacher_info["chat_id"])
+        t_name = teacher_info.get("name", "Ustoz")
+        if t_id not in greeted_recipients:
+            teacher_greeting = (
+                f"🌸 <b>Assalomu alaykum, {html.escape(t_name)} ustoz!</b> 👋✨\n\n"
+                f"📋 <b>{html.escape(sinf)}</b> sinfingiz o'quvchilarining eMaktab kundalik ko'rik natijalari tayyorlandi.\n"
+                f"📸 <i>Quyida skrinshotlar qabul qilinmoqda...</i> ⬇️💎"
+            )
+            try:
+                await bot.send_message(
+                    chat_id=t_id,
+                    text=teacher_greeting,
+                    parse_mode=ParseMode.HTML
+                )
+                greeted_recipients.add(t_id)
+            except Exception as e:
+                logger.error(f"{t_name} ustozga salom yuborishda xato: {e}")
+
 
 async def run_local():
-    bot = Bot(token=config.BOT_TOKEN)
+    bot = create_bot()
     os.makedirs(SCREENSHOTS_DIR, exist_ok=True)
 
     print(f"Excel fayldan ma'lumotlar o'qilmoqda: {EXCEL_FILE}...")
@@ -85,7 +136,8 @@ async def run_local():
                     f"✅ Holat: Muvaffaqiyatli kirildi"
                 )
 
-                # Qabul qiluvchilar: Super Admin + Sinf rahbari
+                await send_greetings_if_needed(bot, sinf)
+
                 recipients = {config.SUPER_ADMIN_ID}
                 teacher_info = config.TEACHERS.get(sinf)
                 if teacher_info and "chat_id" in teacher_info:

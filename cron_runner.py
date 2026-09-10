@@ -9,6 +9,7 @@ import zoneinfo
 import openpyxl
 from playwright.async_api import async_playwright
 from telegram import Bot
+from telegram.request import HTTPXRequest
 from telegram.constants import ParseMode
 
 import config
@@ -26,9 +27,20 @@ if not os.path.exists(DEFAULT_EXCEL):
 EXCEL_FILE = os.getenv("EXCEL_FILE", DEFAULT_EXCEL)
 SCREENSHOTS_DIR = os.path.join(BASE_DIR, "screenshots")
 
+greeted_recipients = set()
+
+
+def create_bot():
+    request = HTTPXRequest(
+        connect_timeout=30.0,
+        read_timeout=30.0,
+        write_timeout=30.0,
+        pool_timeout=30.0
+    )
+    return Bot(token=config.BOT_TOKEN, request=request)
+
 
 def load_accounts_by_class(file_path: str):
-    """Excel fayldan hisoblarni sinflar bo'yicha guruhlab o'qiydi."""
     if not os.path.exists(file_path):
         logger.error(f"Excel fayl topilmadi: {file_path}")
         return {}
@@ -60,13 +72,6 @@ def load_accounts_by_class(file_path: str):
 
 
 def generate_weekly_schedule(accounts: list, year: int, week: int):
-    """
-    Haftalik determenistik aqlli taqsimot:
-    1. Barcha hisoblar Dushanbadan Jumagacha (5 kunga) taqsimlanadi (kamida 1 marta kirish kafolatlanadi).
-    2. Ba'zi hisoblarga haftasiga 2-4 marta kirish uchun qo'shimcha slotlar ajratiladi.
-    3. Kunlik chegara qat'iyan DAILY_MAX_ACCOUNTS (11 ta) dan oshmaydi.
-    4. Bitta hisob bo'yicha haftalik limit WEEKLY_MAX_PER_ACCOUNT (4 ta) dan oshmaydi.
-    """
     rng = random.Random(year * 1000 + week)
     shuffled = list(accounts)
     rng.shuffle(shuffled)
@@ -74,7 +79,6 @@ def generate_weekly_schedule(accounts: list, year: int, week: int):
     days = {0: [], 1: [], 2: [], 3: [], 4: []}
     counts = {acc["login"]: 0 for acc in accounts}
 
-    # 1-qadam: Asosiy taqsimot (barcha hisoblar haftada kamida 1 marta kiradi)
     n = len(shuffled)
     base_per_day = n // 5
     remainder = n % 5
@@ -89,7 +93,6 @@ def generate_weekly_schedule(accounts: list, year: int, week: int):
                 counts[acc["login"]] += 1
                 idx += 1
 
-    # 2-qadam: Takroriy kirishlarni taqsimlash (haftalik limit 4, kunlik limit <= 10)
     for d in range(5):
         current_logins = {acc["login"] for acc in days[d]}
         candidates = [
@@ -97,7 +100,7 @@ def generate_weekly_schedule(accounts: list, year: int, week: int):
             if acc["login"] not in current_logins and counts[acc["login"]] < config.WEEKLY_MAX_PER_ACCOUNT
         ]
         rng.shuffle(candidates)
-        available_slots = min(rng.randint(1, 3), config.DAILY_MAX_ACCOUNTS - 1 - len(days[d]))
+        available_slots = min(rng.randint(1, 2), config.DAILY_MAX_ACCOUNTS - 1 - len(days[d]))
         for acc in candidates[:max(0, available_slots)]:
             days[d].append(acc)
             counts[acc["login"]] += 1
@@ -105,29 +108,75 @@ def generate_weekly_schedule(accounts: list, year: int, week: int):
     return days
 
 
+async def send_greetings_if_needed(bot: Bot, sinf: str):
+    """Rasmlar yuborilishidan oldin ismini aytib, jonli animatsion emojilar bilan salom beradi."""
+    # 1. Bosh adminga salom
+    if config.SUPER_ADMIN_ID not in greeted_recipients:
+        admin_greeting = (
+            "⚡ <b>Assalomu alaykum, Bosh Administrator!</b> 👑✨\n\n"
+            "🚀 Bugungi eMaktab monitoring jarayoni boshlandi.\n"
+            "📊 <i>Barcha sinflar bo'yicha hisobotlar quyida qabul qilinmoqda...</i> ⬇️💎"
+        )
+        try:
+            await bot.send_message(
+                chat_id=config.SUPER_ADMIN_ID,
+                text=admin_greeting,
+                parse_mode=ParseMode.HTML
+            )
+            greeted_recipients.add(config.SUPER_ADMIN_ID)
+            logger.info("Bosh adminga salomnoma yuborildi.")
+        except Exception as e:
+            logger.error(f"Bosh adminga salom yuborishda xato: {e}")
+
+    # 2. Tegishli sinf rahbariga salom
+    teacher_info = config.TEACHERS.get(sinf)
+    if teacher_info and "chat_id" in teacher_info:
+        t_id = int(teacher_info["chat_id"])
+        t_name = teacher_info.get("name", "Ustoz")
+        if t_id not in greeted_recipients:
+            teacher_greeting = (
+                f"🌸 <b>Assalomu alaykum, {html.escape(t_name)} ustoz!</b> 👋✨\n\n"
+                f"📋 <b>{html.escape(sinf)}</b> sinfingiz o'quvchilarining eMaktab kundalik ko'rik natijalari tayyorlandi.\n"
+                f"📸 <i>Quyida skrinshotlar qabul qilinmoqda...</i> ⬇️💎"
+            )
+            try:
+                await bot.send_message(
+                    chat_id=t_id,
+                    text=teacher_greeting,
+                    parse_mode=ParseMode.HTML
+                )
+                greeted_recipients.add(t_id)
+                logger.info(f"{t_name} ustozga salomnoma yuborildi (ID: {t_id}).")
+            except Exception as e:
+                logger.error(f"{t_name} ustozga salom yuborishda xato: {e}")
+
+
 async def send_screenshot(bot: Bot, photo_path: str, caption: str, sinf: str):
-    """Skrinshotni Bosh Adminga va tegishli sinf rahbariga yuboradi."""
+    await send_greetings_if_needed(bot, sinf)
+
     recipients = {config.SUPER_ADMIN_ID}
     teacher_info = config.TEACHERS.get(sinf)
     if teacher_info and "chat_id" in teacher_info:
         recipients.add(int(teacher_info["chat_id"]))
 
     for chat_id in recipients:
-        try:
-            with open(photo_path, "rb") as photo:
-                await bot.send_photo(
-                    chat_id=chat_id,
-                    photo=photo,
-                    caption=caption,
-                    parse_mode=ParseMode.HTML
-                )
-            logger.info(f"Rasm muvaffaqiyatli yuborildi -> Telegram ID: {chat_id}")
-        except Exception as e:
-            logger.error(f"Rasm yuborishda xatolik (ID: {chat_id}): {e}")
+        for attempt in range(3):
+            try:
+                with open(photo_path, "rb") as photo:
+                    await bot.send_photo(
+                        chat_id=chat_id,
+                        photo=photo,
+                        caption=caption,
+                        parse_mode=ParseMode.HTML
+                    )
+                logger.info(f"Rasm muvaffaqiyatli yuborildi -> Telegram ID: {chat_id}")
+                break
+            except Exception as e:
+                logger.warning(f"Rasm yuborishda xatolik (urinish {attempt+1}/3, ID: {chat_id}): {e}")
+                await asyncio.sleep(3)
 
 
 async def process_account(page, bot: Bot, acc: dict):
-    """Bitta hisobga kiradi, 7 soniya kutadi, rasm oladi va yuboradi."""
     login = acc["login"]
     password = acc["password"]
     sinf = acc.get("sinf", "9-B")
@@ -142,7 +191,7 @@ async def process_account(page, bot: Bot, acc: dict):
 
         try:
             await page.wait_for_selector('text="Chiqish"', timeout=10000)
-            logger.info(f"[+] {login} tizimga kirdi ('Chiqish' tugmasi tasdiqlandi)")
+            logger.info(f"[+] {login} tizimga kirdi ('Chiqish' topildi)")
         except Exception:
             logger.warning(f"[!] {login} uchun 'Chiqish' topilmadi, baribir skrinshot olinadi.")
 
@@ -169,16 +218,15 @@ async def process_account(page, bot: Bot, acc: dict):
 
 
 async def run():
-    bot = Bot(token=config.BOT_TOKEN)
+    bot = create_bot()
     tashkent_tz = zoneinfo.ZoneInfo("Asia/Tashkent")
     now = datetime.now(tashkent_tz)
     year, week, weekday_iso = now.isocalendar()
-    weekday = weekday_iso - 1  # 0=Dushanba, ..., 4=Juma, 5=Shanba, 6=Yakshanba
+    weekday = weekday_iso - 1
 
     day_names = ["Dushanba", "Seshanba", "Chorshanba", "Payshanba", "Juma", "Shanba", "Yakshanba"]
     logger.info(f"Hozirgi vaqt (Toshkent): {now.strftime('%Y-%m-%d %H:%M:%S')}, {day_names[weekday]}")
 
-    # Agar shanba yoki yakshanba bo'lsa va maxsus majburlash bo'lmasa, to'xtatish
     force_run = os.getenv("FORCE_RUN", "false").lower() == "true"
     custom_day = os.getenv("CUSTOM_DAY", "auto").lower()
 
@@ -197,7 +245,6 @@ async def run():
         logger.info("Dam olish kuni (Shanba/Yakshanba). Avtomatik ish to'xtatildi.")
         return
 
-    # Jitter (Tasodifiy kechikish) — faqat rejalashtirilgan cron rejimida
     enable_jitter = os.getenv("ENABLE_JITTER", "true").lower() == "true"
     if enable_jitter and not force_run:
         jitter = random.randint(config.MIN_STARTUP_JITTER_SECONDS, config.MAX_STARTUP_JITTER_SECONDS)
@@ -215,9 +262,8 @@ async def run():
         today_accs = schedule.get(min(weekday, 4), [])
         today_batch.extend(today_accs)
 
-    # 1 kunda 11 tadan oshmasligi kafolati
     if len(today_batch) > config.DAILY_MAX_ACCOUNTS:
-        logger.warning(f"Reja {len(today_batch)} ta hisobni ko'rsatdi, limitga moslab {config.DAILY_MAX_ACCOUNTS} tagacha qisqartirildi.")
+        logger.warning(f"Kunlik limit {config.DAILY_MAX_ACCOUNTS} tadan oshmasligi uchun {config.DAILY_MAX_ACCOUNTS} tagacha qisqartirildi.")
         today_batch = today_batch[:config.DAILY_MAX_ACCOUNTS]
 
     logger.info(f"Bugungi ({day_names[min(weekday, 4)]}) navbatda {len(today_batch)} ta hisob bor.")
@@ -253,7 +299,7 @@ async def run():
             parse_mode=ParseMode.HTML
         )
     except Exception as e:
-        logger.error(f"Xulosa xabarini yuborishda xatolik: {e}")
+        logger.error(f"Xulosa xabarini yuborishda xato: {e}")
 
     logger.info("Bugungi barcha vazifalar to'liq yakunlandi!")
 

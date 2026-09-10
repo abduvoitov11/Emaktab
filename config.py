@@ -14,8 +14,11 @@ TEACHERS = {
         "name": "Zuhra",
         "chat_id": 896459615
     },
-    # Kelajakda qo'shiladigan yangi sinf uchun tayyorlangan o'rin:
     "9-A": {
+        "name": "Muhayyo",
+        "chat_id": 624782674
+    },
+    "MUHAYYO": {
         "name": "Muhayyo",
         "chat_id": 624782674
     }
@@ -26,11 +29,8 @@ BOT_TOKEN = os.getenv("BOT_TOKEN", "8375587042:AAGfQNUc_3LzpTHBIPsyNHxw8AHfFV9Cy
 LOGIN_URL = "https://login.emaktab.uz/"
 
 # ==================== 3. QAT'IY CHEKLOVLAR VA ME'YORLAR ====================
-# Bir kunda kirishlar soni 11 tadan oshishi qat'iyan taqiqlanadi
-DAILY_MAX_ACCOUNTS = 11
-
-# Bitta hisobga bir haftada kirishlar soni bo'yicha maksimal limit
-WEEKLY_MAX_PER_ACCOUNT = 4
+DAILY_MAX_ACCOUNTS = 11      # 1 kunda 11 tadan oshiq hisobga kirish qat'iyan taqiqlanadi
+WEEKLY_MAX_PER_ACCOUNT = 4  # 1 hisobga 1 haftada maksimal 4 martagacha kirish mumkin
 
 # ==================== 4. ANTI-BAN VA VAQT SOZLAMALARI ====================
 PAGE_LOAD_WAIT_SECONDS = 7    # Ma'lumotlar to'liq ko'rinishi uchun kutish

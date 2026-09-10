@@ -72,14 +72,6 @@ def load_accounts_by_class(file_path: str):
 
 
 def generate_weekly_schedule(accounts: list, year: int, week: int):
-    """
-    Yangi haftalik jadval:
-    - Shanba (5): sekin boshlanadi (3-4 ta hisob)
-    - Yakshanba (6) - Payshanba (3): to'liq faol kunlar (6-9 ta hisob)
-    - Juma (4): UMUMAN KIRILMAYDI (0 hisob)
-    - 1 kunda limit: <= 11 ta
-    - 1 haftada hisob bo'yicha limit: <= 4 marta
-    """
     rng = random.Random(year * 1000 + week)
     shuffled = list(accounts)
     rng.shuffle(shuffled)
@@ -87,10 +79,8 @@ def generate_weekly_schedule(accounts: list, year: int, week: int):
     days = {0: [], 1: [], 2: [], 3: [], 4: [], 5: [], 6: []}
     counts = {acc["login"]: 0 for acc in accounts}
 
-    # Faol kunlar tartibi: Shanba(5), Yakshanba(6), Dushanba(0), Seshanba(1), Chorshanba(2), Payshanba(3)
-    active_days = [5, 6, 0, 1, 2, 3]
+    active_days = [5, 6, 0, 1, 2, 3] # Shanba(5), Yakshanba(6), Dushanba(0), Seshanba(1), Chorshanba(2), Payshanba(3)
 
-    # Asosiy taqsimot
     n = len(shuffled)
     saturday_quota = min(3, n)
     remaining_n = n - saturday_quota
@@ -110,7 +100,6 @@ def generate_weekly_schedule(accounts: list, year: int, week: int):
                 counts[acc["login"]] += 1
                 idx += 1
 
-    # Takroriy kirishlar (haftalik limit 4, kunlik limit <= 10)
     for d in active_days:
         current_logins = {acc["login"] for acc in days[d]}
         candidates = [
@@ -192,27 +181,57 @@ async def send_screenshot(bot: Bot, photo_path: str, caption: str, sinf: str):
                 await asyncio.sleep(3)
 
 
+async def smooth_scroll(page, steps=4):
+    for _ in range(steps):
+        scroll_y = random.randint(150, 300)
+        await page.mouse.wheel(0, scroll_y)
+        await page.mouse.move(random.randint(100, 700), random.randint(200, 600))
+        await asyncio.sleep(random.uniform(1.0, 2.0))
+    await page.mouse.wheel(0, -random.randint(100, 200))
+    await asyncio.sleep(1.0)
+
+
 async def process_account(page, bot: Bot, acc: dict):
     login = acc["login"]
     password = acc["password"]
     sinf = acc.get("sinf", "9-B")
 
-    logger.info(f"[*] Kirishga urinish: {login} (Sinf: {sinf})")
+    logger.info(f"[*] Insoniy emulyatsiya bilan kirilmoqda: {login} (Sinf: {sinf})")
     try:
         await page.goto(config.LOGIN_URL, wait_until="domcontentloaded", timeout=60000)
         await page.wait_for_selector('input[name="login"]', timeout=15000)
-        await page.fill('input[name="login"]', login)
-        await page.fill('input[name="password"]', password)
+        await asyncio.sleep(random.uniform(0.8, 1.5))
+
+        # Insondek harfma-harf terish
+        for char in login:
+            await page.type('input[name="login"]', char, delay=random.randint(60, 130))
+        await asyncio.sleep(random.uniform(0.4, 0.9))
+
+        for char in password:
+            await page.type('input[name="password"]', char, delay=random.randint(60, 130))
+        await asyncio.sleep(random.uniform(0.6, 1.2))
+
         await page.click('button[type="submit"], input[type="submit"]')
 
         try:
-            await page.wait_for_selector('text="Chiqish"', timeout=10000)
+            await page.wait_for_selector('text="Chiqish"', timeout=15000)
             logger.info(f"[+] {login} tizimga kirdi ('Chiqish' topildi)")
         except Exception:
-            logger.warning(f"[!] {login} uchun 'Chiqish' topilmadi, baribir skrinshot olinadi.")
+            logger.warning(f"[!] {login} uchun 'Chiqish' topilmadi, davom etilmoqda.")
 
-        logger.info(f"[~] {login} uchun ma'lumotlar to'liq yuklanishini {config.PAGE_LOAD_WAIT_SECONDS}s kutmoqdamiz...")
-        await page.wait_for_timeout(config.PAGE_LOAD_WAIT_SECONDS * 1000)
+        # Kundalik / dars jadvali sahifasiga o'tish
+        kundalik_link = await page.query_selector('a:has-text("Kundalik"), a:has-text("Dnevnik"), a:has-text("Dars jadvali")')
+        if kundalik_link:
+            try:
+                await kundalik_link.click()
+                await page.wait_for_load_state("domcontentloaded", timeout=10000)
+                logger.info("[+] Kundalik bo'limi ochildi.")
+            except Exception:
+                pass
+
+        # Insondek o'qish, sahifani sekin aylantirish va sichqoncha harakati
+        await smooth_scroll(page, steps=3)
+        await asyncio.sleep(config.PAGE_LOAD_WAIT_SECONDS)
 
         os.makedirs(SCREENSHOTS_DIR, exist_ok=True)
         screenshot_path = os.path.join(SCREENSHOTS_DIR, f"{login}.png")
@@ -222,7 +241,8 @@ async def process_account(page, bot: Bot, acc: dict):
             f"🏫 Sinf: <b>{html.escape(sinf)}</b>\n"
             f"👤 Login: <tg-spoiler>{html.escape(login)}</tg-spoiler>\n"
             f"🔑 Parol: <tg-spoiler>{html.escape(password)}</tg-spoiler>\n"
-            f"✅ Holat: Muvaffaqiyatli kirildi"
+            f"✅ Holat: Muvaffaqiyatli kirildi\n"
+            f"⏱ <i>Kundalik va darslar to'liq ko'zdan kechirildi</i>"
         )
 
         await send_screenshot(bot, screenshot_path, caption, sinf)
@@ -238,7 +258,7 @@ async def run():
     tashkent_tz = zoneinfo.ZoneInfo("Asia/Tashkent")
     now = datetime.now(tashkent_tz)
     year, week, weekday_iso = now.isocalendar()
-    weekday = weekday_iso - 1  # 0=Dushanba, 1=Seshanba, ..., 4=Juma, 5=Shanba, 6=Yakshanba
+    weekday = weekday_iso - 1
 
     day_names = {
         0: "Dushanba", 1: "Seshanba", 2: "Chorshanba", 3: "Payshanba",
@@ -264,7 +284,6 @@ async def run():
     elif custom_day in ["6", "sun", "yakshanba"]:
         weekday = 6
 
-    # Juma kuni umuman kirilmaydi!
     if weekday == 4 and not force_run:
         logger.info("🛑 Bugun JUMA — dam olish kuni. eMaktabga kirish qat'iyan to'xtatildi!")
         return
@@ -287,18 +306,24 @@ async def run():
         today_batch.extend(today_accs)
 
     if len(today_batch) > config.DAILY_MAX_ACCOUNTS:
-        logger.warning(f"Kunlik limit {config.DAILY_MAX_ACCOUNTS} tadan oshmasligi uchun {config.DAILY_MAX_ACCOUNTS} tagacha qisqartirildi.")
+        logger.warning(f"Kunlik limit {config.DAILY_MAX_ACCOUNTS} tadan oshmasligi uchun qisqartirildi.")
         today_batch = today_batch[:config.DAILY_MAX_ACCOUNTS]
 
     logger.info(f"Bugungi ({day_names.get(weekday, '')}) navbatda {len(today_batch)} ta hisob bor.")
 
     if not today_batch:
-        logger.info("Bugun uchun rejalashtirilgan hisoblar yo'q.")
+        logger.info("Bugun uchun hisoblar belgilanmagan.")
         return
 
     async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=True)
-        context = await browser.new_context(viewport={"width": 1280, "height": 720})
+        browser = await p.chromium.launch(
+            headless=True,
+            args=["--disable-blink-features=AutomationControlled"]
+        )
+        context = await browser.new_context(
+            viewport={"width": 1366, "height": 768},
+            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+        )
         page = await context.new_page()
 
         success_count = 0

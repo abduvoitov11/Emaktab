@@ -7,7 +7,7 @@ import logging
 import subprocess
 import openpyxl
 from playwright.async_api import async_playwright
-from telegram import Bot
+from telegram import Bot, InputMediaPhoto, InputMediaVideo
 from telegram.request import HTTPXRequest
 from telegram.constants import ParseMode
 
@@ -85,35 +85,37 @@ async def send_media(bot: Bot, photo_path: str, video_path: str, caption: str, s
     if teacher_info and "chat_id" in teacher_info:
         recipients.add(int(teacher_info["chat_id"]))
 
+    try:
+        with open(photo_path, "rb") as pf:
+            photo_bytes = pf.read()
+        with open(video_path, "rb") as vf:
+            video_bytes = vf.read()
+    except Exception as e:
+        logger.error(f"Media fayllarni o'qishda xato: {e}")
+        return
+
     for chat_id in recipients:
+        sent_group = False
         for attempt in range(3):
             try:
-                with open(photo_path, "rb") as photo:
-                    await bot.send_photo(
-                        chat_id=chat_id,
-                        photo=photo,
-                        caption=caption,
-                        parse_mode=ParseMode.HTML
-                    )
+                media_group = [
+                    InputMediaPhoto(media=photo_bytes, caption=caption, parse_mode=ParseMode.HTML),
+                    InputMediaVideo(media=video_bytes, supports_streaming=True)
+                ]
+                await bot.send_media_group(chat_id=chat_id, media=media_group)
+                sent_group = True
                 break
             except Exception as e:
-                logger.warning(f"Rasm yuborishda xato (urinish {attempt+1}/3): {e}")
+                logger.warning(f"Media group yuborishda xato ({chat_id}, urinish {attempt+1}/3): {e}")
                 await asyncio.sleep(2)
 
-        for attempt in range(3):
+        if not sent_group:
+            logger.info(f"Media group o'tmadi, alohida yuborilmoqda ({chat_id})...")
             try:
-                with open(video_path, "rb") as video:
-                    await bot.send_video(
-                        chat_id=chat_id,
-                        video=video,
-                        caption=caption,
-                        parse_mode=ParseMode.HTML,
-                        supports_streaming=True
-                    )
-                break
+                await bot.send_photo(chat_id=chat_id, photo=photo_bytes, caption=caption, parse_mode=ParseMode.HTML)
+                await bot.send_video(chat_id=chat_id, video=video_bytes, supports_streaming=True)
             except Exception as e:
-                logger.warning(f"Video yuborishda xato (urinish {attempt+1}/3): {e}")
-                await asyncio.sleep(2)
+                logger.error(f"Alohida yuborishda ham xato ({chat_id}): {e}")
 
 
 async def smooth_scroll_down(page, steps=3):
@@ -121,7 +123,7 @@ async def smooth_scroll_down(page, steps=3):
         scroll_y = random.randint(180, 260)
         await page.mouse.wheel(0, scroll_y)
         await page.mouse.move(random.randint(200, 700), random.randint(200, 500))
-        await asyncio.sleep(random.uniform(1.0, 1.5))
+        await asyncio.sleep(random.uniform(1.0, 1.4))
 
 
 async def smooth_scroll_up(page, steps=3):
@@ -129,7 +131,7 @@ async def smooth_scroll_up(page, steps=3):
         scroll_y = random.randint(180, 260)
         await page.mouse.wheel(0, -scroll_y)
         await page.mouse.move(random.randint(200, 700), random.randint(200, 500))
-        await asyncio.sleep(random.uniform(0.8, 1.3))
+        await asyncio.sleep(random.uniform(0.8, 1.2))
 
 
 async def run_local():
@@ -192,13 +194,17 @@ async def run_local():
 
                 await page.click('button[type="submit"], input[type="submit"]')
 
-                print(f"[~] {login} uchun 7.5s kutilmoqda...")
-                await asyncio.sleep(7.5)
+                print(f"[~] {login} uchun 1-sahifa to'liq yuklanishi 6 soniya kutilmoqda...")
+                await asyncio.sleep(6.0)
+
+                # HECH QANDAY TUGMA BOSILMASDAN 1-sahifa rasmi olinadi
+                photo_path = os.path.join(MEDIA_DIR, f"{login}.png")
+                await page.screenshot(path=photo_path, full_page=False)
 
                 await smooth_scroll_down(page, steps=3)
-                await asyncio.sleep(1.2)
+                await asyncio.sleep(1.0)
                 await smooth_scroll_up(page, steps=3)
-                await asyncio.sleep(1.2)
+                await asyncio.sleep(1.0)
 
                 # Dars jadvalini ochish
                 kundalik_btn = await page.query_selector('a:has-text("Kundalik"), a:has-text("Dnevnik"), a:has-text("Dars jadvali")')
@@ -209,15 +215,11 @@ async def run_local():
                     except Exception:
                         pass
 
-                await asyncio.sleep(2.5)
-                await smooth_scroll_down(page, steps=4)
                 await asyncio.sleep(2.0)
-
-                photo_path = os.path.join(MEDIA_DIR, f"{login}.png")
-                await page.screenshot(path=photo_path, full_page=False)
-
+                await smooth_scroll_down(page, steps=4)
+                await asyncio.sleep(1.5)
                 await smooth_scroll_up(page, steps=4)
-                await asyncio.sleep(1.2)
+                await asyncio.sleep(1.0)
 
                 # Qaytish
                 home_btn = await page.query_selector('a:has-text("Bosh sahifa"), a:has-text("Glavnaya"), a.header__logo')
@@ -230,7 +232,8 @@ async def run_local():
                 else:
                     await page.go_back()
 
-                await asyncio.sleep(3.5)
+                print(f"[~] {login} uchun asosiy sahifada 2.5s kutilmoqda...")
+                await asyncio.sleep(2.5)
 
                 await page.close()
                 raw_video_path = await page.video.path()

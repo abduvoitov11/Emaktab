@@ -9,7 +9,7 @@ from datetime import datetime
 import zoneinfo
 import openpyxl
 from playwright.async_api import async_playwright
-from telegram import Bot
+from telegram import Bot, InputMediaPhoto, InputMediaVideo
 from telegram.request import HTTPXRequest
 from telegram.constants import ParseMode
 
@@ -163,35 +163,38 @@ async def send_media(bot: Bot, photo_path: str, video_path: str, caption: str, s
     if teacher_info and "chat_id" in teacher_info:
         recipients.add(int(teacher_info["chat_id"]))
 
+    try:
+        with open(photo_path, "rb") as pf:
+            photo_bytes = pf.read()
+        with open(video_path, "rb") as vf:
+            video_bytes = vf.read()
+    except Exception as e:
+        logger.error(f"Media fayllarni o'qishda xato: {e}")
+        return
+
     for chat_id in recipients:
+        sent_group = False
         for attempt in range(3):
             try:
-                with open(photo_path, "rb") as photo:
-                    await bot.send_photo(
-                        chat_id=chat_id,
-                        photo=photo,
-                        caption=caption,
-                        parse_mode=ParseMode.HTML
-                    )
+                media_group = [
+                    InputMediaPhoto(media=photo_bytes, caption=caption, parse_mode=ParseMode.HTML),
+                    InputMediaVideo(media=video_bytes, supports_streaming=True)
+                ]
+                await bot.send_media_group(chat_id=chat_id, media=media_group)
+                sent_group = True
                 break
             except Exception as e:
-                logger.warning(f"Rasm yuborishda xato (urinish {attempt+1}/3): {e}")
+                logger.warning(f"Media group yuborishda xato ({chat_id}, urinish {attempt+1}/3): {e}")
                 await asyncio.sleep(2)
 
-        for attempt in range(3):
+        # Agar media group biron sababga ko'ra o'tmasa, alohida yuborish fallback
+        if not sent_group:
+            logger.info(f"Media group o'tmadi, alohida yuborilmoqda ({chat_id})...")
             try:
-                with open(video_path, "rb") as video:
-                    await bot.send_video(
-                        chat_id=chat_id,
-                        video=video,
-                        caption=caption,
-                        parse_mode=ParseMode.HTML,
-                        supports_streaming=True
-                    )
-                break
+                await bot.send_photo(chat_id=chat_id, photo=photo_bytes, caption=caption, parse_mode=ParseMode.HTML)
+                await bot.send_video(chat_id=chat_id, video=video_bytes, supports_streaming=True)
             except Exception as e:
-                logger.warning(f"Video yuborishda xato (urinish {attempt+1}/3): {e}")
-                await asyncio.sleep(2)
+                logger.error(f"Alohida yuborishda ham xato ({chat_id}): {e}")
 
 
 async def smooth_scroll_down(page, steps=3):
@@ -199,7 +202,7 @@ async def smooth_scroll_down(page, steps=3):
         scroll_y = random.randint(180, 260)
         await page.mouse.wheel(0, scroll_y)
         await page.mouse.move(random.randint(200, 700), random.randint(200, 500))
-        await asyncio.sleep(random.uniform(1.0, 1.5))
+        await asyncio.sleep(random.uniform(1.0, 1.4))
 
 
 async def smooth_scroll_up(page, steps=3):
@@ -207,7 +210,7 @@ async def smooth_scroll_up(page, steps=3):
         scroll_y = random.randint(180, 260)
         await page.mouse.wheel(0, -scroll_y)
         await page.mouse.move(random.randint(200, 700), random.randint(200, 500))
-        await asyncio.sleep(random.uniform(0.8, 1.3))
+        await asyncio.sleep(random.uniform(0.8, 1.2))
 
 
 async def process_account(browser, bot: Bot, acc: dict):
@@ -243,17 +246,22 @@ async def process_account(browser, bot: Bot, acc: dict):
 
         await page.click('button[type="submit"], input[type="submit"]')
 
-        # 3. Asosiy sahifa to'liq yuklanishi uchun 7.5 soniya kutish
-        logger.info(f"[~] {login} uchun 7.5s sahifa yuklanishi kutilmoqda...")
-        await asyncio.sleep(7.5)
+        # 3. 1-sahifaga kirib, to'liq yuklanishi uchun 6 soniya kutish
+        logger.info(f"[~] {login} uchun 1-sahifa to'liq yuklanishi 6 soniya kutilmoqda...")
+        await asyncio.sleep(6.0)
 
-        # 4. Asosiy sahifada insondek pastga va tepaga scroll qilish
+        # 4. HECH QANDAY TUGMA BOSILMASDAN 1-sahifaning rasmini (skrinshot) olish
+        photo_path = os.path.join(MEDIA_DIR, f"{login}.png")
+        await page.screenshot(path=photo_path, full_page=False)
+        logger.info(f"[+] 1-sahifa rasmi olindi: {photo_path}")
+
+        # 5. Videoning davomi: 1-sahifada scroll qilish
         await smooth_scroll_down(page, steps=3)
-        await asyncio.sleep(1.2)
+        await asyncio.sleep(1.0)
         await smooth_scroll_up(page, steps=3)
-        await asyncio.sleep(1.2)
+        await asyncio.sleep(1.0)
 
-        # 5. Dars jadvalini / Kundalikni ochish
+        # 6. Dars jadvalini / Kundalikni ochish
         logger.info(f"[~] {login} uchun dars jadvali sahifasiga o'tilmoqda...")
         kundalik_btn = await page.query_selector('a:has-text("Kundalik"), a:has-text("Dnevnik"), a:has-text("Dars jadvali")')
         if kundalik_btn:
@@ -264,18 +272,13 @@ async def process_account(browser, bot: Bot, acc: dict):
                 pass
 
         # Dars jadvalini sekin ko'rib chiqish (o'qish, scroll)
-        await asyncio.sleep(2.5)
-        await smooth_scroll_down(page, steps=4)
         await asyncio.sleep(2.0)
-
-        # Skrinshot olish (eng mazmunli joyi — Dars jadvali va baholar)
-        photo_path = os.path.join(MEDIA_DIR, f"{login}.png")
-        await page.screenshot(path=photo_path, full_page=False)
-
+        await smooth_scroll_down(page, steps=4)
+        await asyncio.sleep(1.5)
         await smooth_scroll_up(page, steps=4)
-        await asyncio.sleep(1.2)
+        await asyncio.sleep(1.0)
 
-        # 6. Yana asosiy sahifaga qaytish
+        # 7. Yana asosiy sahifaga qaytish
         logger.info(f"[~] {login} uchun yana asosiy sahifaga qaytilmoqda...")
         home_btn = await page.query_selector('a:has-text("Bosh sahifa"), a:has-text("Glavnaya"), a.header__logo')
         if home_btn:
@@ -287,9 +290,9 @@ async def process_account(browser, bot: Bot, acc: dict):
         else:
             await page.go_back()
 
-        # 7. Asosiy sahifada videoni sekin va tabiiy yakunlash
-        logger.info(f"[~] {login} uchun asosiy sahifada video sekin yakunlanmoqda (3.5s)...")
-        await asyncio.sleep(3.5)
+        # 8. Asosiy sahifada 2.5 soniya kutib videoni yakunlash
+        logger.info(f"[~] {login} uchun asosiy sahifada 2.5s kutilib video yakunlanmoqda...")
+        await asyncio.sleep(2.5)
 
         # Videoni saqlash va yopish
         await page.close()

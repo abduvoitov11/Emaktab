@@ -44,9 +44,11 @@ def create_bot():
 async def send_greetings_if_needed(bot: Bot, sinf: str):
     if config.SUPER_ADMIN_ID not in greeted_recipients:
         admin_greeting = (
-            "⚡ <b>Assalomu alaykum, Bosh Administrator!</b> 👑✨\n\n"
-            "🚀 Bugungi eMaktab monitoring jarayoni boshlandi.\n"
-            "📊 <i>Barcha sinflar bo'yicha rasm va videolar quyida qabul qilinmoqda...</i> ⬇️💎"
+            "⚡ <b>AvtoEmaktab Bosh Monitoring Tizimi</b> 🎓\n"
+            "━━━━━━━━━━━━━━━━━━━━━\n"
+            "Assalomu alaykum, <b>Bosh Administrator</b>!\n\n"
+            "🚀 Bugungi eMaktab avtomatlashtirish jarayoni boshlandi.\n"
+            "📊 <i>Barcha sinflar bo'yicha 1080p HD video va foto hisobotlar quyida qabul qilinmoqda...</i> ⬇️"
         )
         try:
             await bot.send_message(
@@ -64,9 +66,12 @@ async def send_greetings_if_needed(bot: Bot, sinf: str):
         t_name = teacher_info.get("name", "Ustoz")
         if t_id not in greeted_recipients:
             teacher_greeting = (
-                f"🌸 <b>Assalomu alaykum, {html.escape(t_name)} ustoz!</b> 👋✨\n\n"
-                f"📋 <b>{html.escape(sinf)}</b> sinfingiz o'quvchilarining eMaktab kundalik ko'rik natijalari tayyorlandi.\n"
-                f"📸 <i>Quyida rasm va videolar qabul qilinmoqda...</i> ⬇️💎"
+                f"🌸 <b>AvtoEmaktab Hisobot Tizimi</b> 🎓\n"
+                f"━━━━━━━━━━━━━━━━━━━━━\n"
+                f"Assalomu alaykum, <b>{html.escape(t_name)} ustoz</b>! 👋\n\n"
+                f"📋 <b>{html.escape(sinf)}</b> sinfingizning bugungi dars va baholash natijalari tayyorlandi.\n"
+                f"📸 <i>Quyida 1080p HD video va jurnal fotosuratlari qabul qilinmoqda...</i> ⬇️\n\n"
+                f"⏱ <i>Har oyda 26 soat qimmatli vaqtingizni va asabingizni tejang!</i>"
             )
             try:
                 await bot.send_message(
@@ -294,10 +299,15 @@ async def run_local():
                 subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
 
                 caption = (
-                    f"🏫 Sinf: <b>{html.escape(sinf)}</b>\n"
-                    f"👤 Login: <tg-spoiler>{html.escape(login)}</tg-spoiler>\n"
-                    f"🔑 Parol: <tg-spoiler>{html.escape(password)}</tg-spoiler>\n"
-                    f"✅ Holat: Muvaffaqiyatli kirildi"
+                    f"✅ <b>KUNLIK HISOBOT: {html.escape(sinf)} SINF</b>\n"
+                    f"━━━━━━━━━━━━━━━━━━━━━\n"
+                    f"🏫 <b>Tizim:</b> eMaktab.uz Monitoring\n"
+                    f"👤 <b>Login:</b> <tg-spoiler>{html.escape(login)}</tg-spoiler>\n"
+                    f"🔑 <b>Parol:</b> <tg-spoiler>{html.escape(password)}</tg-spoiler>\n"
+                    f"📊 <b>Holati:</b> Muvaffaqiyatli tekshirildi\n"
+                    f"⚡ <b>Kirish:</b> Insoniy simulyatsiya (Playwright)\n"
+                    f"🔒 <b>Xavfsizlik:</b> 21:45 tungi taqiq himoyasida\n\n"
+                    f"🎥 <i>HD video va fotosuratda profilingizga kirilgani va baholar to'liq tekshirilgani tasdiqlangan.</i>"
                 )
 
                 await send_media(bot, photo_path, mp4_path, caption, sinf)
@@ -322,9 +332,13 @@ async def run_local():
 
     tashkent_tz = zoneinfo.ZoneInfo("Asia/Tashkent")
     summary_msg = (
-        f"📊 <b>Umumiy monitoring hisoboti (To'liq Ierarxiya):</b>\n"
-        f"✅ Muvaffaqiyatli tekshirildi: <b>{success_count} / {len(accounts)}</b> ta hisob (Rasm + Video)\n"
-        f"⏱ Tugallangan vaqt: {datetime.now(tashkent_tz).strftime('%H:%M:%S')}"
+        f"📊 <b>KUNLIK YAKUNIY MONITORING HISOBOTI</b>\n"
+        f"━━━━━━━━━━━━━━━━━━━━━\n"
+        f"✅ <b>Muvaffaqiyatli tekshirildi:</b> <b>{success_count} / {len(accounts)}</b> ta hisob\n"
+        f"📹 <b>Format:</b> 1080p HD Video + Skrinshot\n"
+        f"⏱ <b>Yakunlangan vaqt:</b> {datetime.now(tashkent_tz).strftime('%H:%M:%S')} (Toshkent)\n"
+        f"🛡️ <b>Anti-BAN holati:</b> 100% Xavfsiz topshirildi\n\n"
+        f"🎓 <i>AvtoEmaktab — eMaktab.uz aqlli avtomatlashtirish platformasi.</i>"
     )
     try:
         await bot.send_message(

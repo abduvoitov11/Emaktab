@@ -164,7 +164,6 @@ async def send_media(bot: Bot, photo_path: str, video_path: str, caption: str, s
         recipients.add(int(teacher_info["chat_id"]))
 
     for chat_id in recipients:
-        # 1. Rasm yuborish
         for attempt in range(3):
             try:
                 with open(photo_path, "rb") as photo:
@@ -179,7 +178,6 @@ async def send_media(bot: Bot, photo_path: str, video_path: str, caption: str, s
                 logger.warning(f"Rasm yuborishda xato (urinish {attempt+1}/3): {e}")
                 await asyncio.sleep(2)
 
-        # 2. Video yuborish
         for attempt in range(3):
             try:
                 with open(video_path, "rb") as video:
@@ -196,23 +194,20 @@ async def send_media(bot: Bot, photo_path: str, video_path: str, caption: str, s
                 await asyncio.sleep(2)
 
 
-async def human_scroll_down_and_up(page):
-    """Tugmalarni bosmasdan, shu sahifada pastga tushib, yana tepaga qaytish."""
-    for _ in range(4):
+async def smooth_scroll_down(page, steps=3):
+    for _ in range(steps):
         scroll_y = random.randint(180, 260)
         await page.mouse.wheel(0, scroll_y)
-        await page.mouse.move(random.randint(200, 600), random.randint(200, 500))
+        await page.mouse.move(random.randint(200, 700), random.randint(200, 500))
         await asyncio.sleep(random.uniform(1.0, 1.5))
 
-    await asyncio.sleep(1.5)
 
-    for _ in range(4):
+async def smooth_scroll_up(page, steps=3):
+    for _ in range(steps):
         scroll_y = random.randint(180, 260)
         await page.mouse.wheel(0, -scroll_y)
-        await page.mouse.move(random.randint(200, 600), random.randint(200, 500))
+        await page.mouse.move(random.randint(200, 700), random.randint(200, 500))
         await asyncio.sleep(random.uniform(0.8, 1.3))
-
-    await asyncio.sleep(1.0)
 
 
 async def process_account(browser, bot: Bot, acc: dict):
@@ -221,7 +216,7 @@ async def process_account(browser, bot: Bot, acc: dict):
     sinf = acc.get("sinf", "9-B")
 
     os.makedirs(MEDIA_DIR, exist_ok=True)
-    logger.info(f"[*] Kirilmoqda (Rasm + Video): {login} (Sinf: {sinf})")
+    logger.info(f"[*] To'liq insoniy ssenariy (Rasm + Video): {login} (Sinf: {sinf})")
 
     context = await browser.new_context(
         viewport={"width": 1280, "height": 720},
@@ -232,32 +227,69 @@ async def process_account(browser, bot: Bot, acc: dict):
     page = await context.new_page()
 
     try:
+        # 1. Kirish sahifasini ochish
         await page.goto(config.LOGIN_URL, wait_until="domcontentloaded", timeout=60000)
         await page.wait_for_selector('input[name="login"]', timeout=15000)
-        await asyncio.sleep(1.0)
+        await asyncio.sleep(random.uniform(1.0, 1.8))
 
-        # Insondek terish
+        # 2. Insondek terish
         for char in login:
             await page.type('input[name="login"]', char, delay=random.randint(60, 110))
-        await asyncio.sleep(0.5)
+        await asyncio.sleep(random.uniform(0.4, 0.8))
 
         for char in password:
             await page.type('input[name="password"]', char, delay=random.randint(60, 110))
-        await asyncio.sleep(0.8)
+        await asyncio.sleep(random.uniform(0.6, 1.2))
 
         await page.click('button[type="submit"], input[type="submit"]')
 
-        # 7-8 soniya sahifa to'liq yuklanishini kutish
-        logger.info(f"[~] {login} uchun 7.5 soniya sahifa yuklanishi kutilmoqda...")
+        # 3. Asosiy sahifa to'liq yuklanishi uchun 7.5 soniya kutish
+        logger.info(f"[~] {login} uchun 7.5s sahifa yuklanishi kutilmoqda...")
         await asyncio.sleep(7.5)
 
-        # Boshqa tugmalarni bosmasdan shu sahifada scroll qilib pastga tushib, yana tepaga chiqish
-        logger.info(f"[~] {login} uchun sahifada insoniy scroll qilinmoqda...")
-        await human_scroll_down_and_up(page)
+        # 4. Asosiy sahifada insondek pastga va tepaga scroll qilish
+        await smooth_scroll_down(page, steps=3)
+        await asyncio.sleep(1.2)
+        await smooth_scroll_up(page, steps=3)
+        await asyncio.sleep(1.2)
 
-        # Skrinshot olish
+        # 5. Dars jadvalini / Kundalikni ochish
+        logger.info(f"[~] {login} uchun dars jadvali sahifasiga o'tilmoqda...")
+        kundalik_btn = await page.query_selector('a:has-text("Kundalik"), a:has-text("Dnevnik"), a:has-text("Dars jadvali")')
+        if kundalik_btn:
+            try:
+                await kundalik_btn.click()
+                await page.wait_for_load_state("domcontentloaded", timeout=10000)
+            except Exception:
+                pass
+
+        # Dars jadvalini sekin ko'rib chiqish (o'qish, scroll)
+        await asyncio.sleep(2.5)
+        await smooth_scroll_down(page, steps=4)
+        await asyncio.sleep(2.0)
+
+        # Skrinshot olish (eng mazmunli joyi — Dars jadvali va baholar)
         photo_path = os.path.join(MEDIA_DIR, f"{login}.png")
         await page.screenshot(path=photo_path, full_page=False)
+
+        await smooth_scroll_up(page, steps=4)
+        await asyncio.sleep(1.2)
+
+        # 6. Yana asosiy sahifaga qaytish
+        logger.info(f"[~] {login} uchun yana asosiy sahifaga qaytilmoqda...")
+        home_btn = await page.query_selector('a:has-text("Bosh sahifa"), a:has-text("Glavnaya"), a.header__logo')
+        if home_btn:
+            try:
+                await home_btn.click()
+                await page.wait_for_load_state("domcontentloaded", timeout=10000)
+            except Exception:
+                await page.go_back()
+        else:
+            await page.go_back()
+
+        # 7. Asosiy sahifada videoni sekin va tabiiy yakunlash
+        logger.info(f"[~] {login} uchun asosiy sahifada video sekin yakunlanmoqda (3.5s)...")
+        await asyncio.sleep(3.5)
 
         # Videoni saqlash va yopish
         await page.close()
@@ -273,7 +305,7 @@ async def process_account(browser, bot: Bot, acc: dict):
         ]
         subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
 
-        # Ortiqcha so'zlarsiz, toza va rasmiy izoh
+        # Toza va rasmiy izoh
         caption = (
             f"🏫 Sinf: <b>{html.escape(sinf)}</b>\n"
             f"👤 Login: <tg-spoiler>{html.escape(login)}</tg-spoiler>\n"
@@ -283,7 +315,6 @@ async def process_account(browser, bot: Bot, acc: dict):
 
         await send_media(bot, photo_path, mp4_path, caption, sinf)
 
-        # Tozalash
         if os.path.exists(raw_video_path):
             os.remove(raw_video_path)
 

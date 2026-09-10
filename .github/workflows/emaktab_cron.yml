@@ -43,7 +43,7 @@ on:
         default: true
         type: boolean
       all_accounts:
-        description: "Barcha 35 ta hisobga to'liq kirish (Ierarxiya bo'yicha)"
+        description: "Barcha 62 ta hisobga to'liq kirish (Ierarxiya bo'yicha)"
         required: false
         default: false
         type: boolean

@@ -310,7 +310,8 @@ async def process_account(browser, bot: Bot, acc: dict):
 
     tashkent_tz = zoneinfo.ZoneInfo("Asia/Tashkent")
     now_check = datetime.now(tashkent_tz)
-    if config.is_curfew_time(now_check):
+    ignore_curfew = os.getenv("IGNORE_CURFEW", "false").lower() == "true"
+    if config.is_curfew_time(now_check) and not ignore_curfew:
         logger.warning(f"🛑 {login} uchun login bekor qilindi: Tungi taqiq (21:45 - 07:00) faol! ({now_check.strftime('%H:%M:%S')})")
         return False
 
@@ -604,8 +605,10 @@ async def run():
     }
     logger.info(f"Hozirgi vaqt (Toshkent): {now.strftime('%Y-%m-%d %H:%M:%S')}, {day_names.get(weekday, '')}")
 
+    ignore_curfew = os.getenv("IGNORE_CURFEW", "false").lower() == "true"
+
     # Tungi rejim taqiqi (21:45 - 07:00) — Bu vaqt oralig'ida login qilish qat'iyan taqiqlanadi
-    if config.is_curfew_time(now):
+    if config.is_curfew_time(now) and not ignore_curfew:
         curfew_msg = (
             "🛑 <b>TUNGI XAVFSIZLIK TAQIQI (21:45 - 07:00)</b>\n"
             "━━━━━━━━━━━━━━━━━━━━━\n"
@@ -658,12 +661,18 @@ async def run():
         logger.error("Hech qanday hisob topilmadi!")
         return
 
-    all_accounts = os.getenv("ALL_ACCOUNTS", "false").lower() == "true"
+    target_class = os.getenv("TARGET_CLASS")
+    if target_class:
+        norm_target = target_class.strip().upper().replace(" ", "").replace("-", "")
+        classes = {k: v for k, v in classes.items() if k.replace("-", "").replace(" ", "").upper() == norm_target}
+        logger.info(f"🎯 Sinf filtri faol: Faqat {target_class} ({sum(len(v) for v in classes.values())} ta hisob)")
+
+    all_accounts = os.getenv("ALL_ACCOUNTS", "false").lower() == "true" or bool(target_class)
     if all_accounts:
         today_batch = []
         for sinf_name, acc_list in classes.items():
             today_batch.extend(acc_list)
-        logger.info(f"⚡ TO'LIQ IERARXIYA REJIMI (ALL_ACCOUNTS=True): Jami {len(today_batch)} ta hisobga kiriladi!")
+        logger.info(f"⚡ TO'LIQ IERARXIYA REJIMI: Jami {len(today_batch)} ta hisobga kiriladi!")
     else:
         today_batch = []
         for sinf_name, accounts in classes.items():
@@ -690,7 +699,7 @@ async def run():
         success_count = 0
         for i, acc in enumerate(today_batch, 1):
             now_check = datetime.now(tashkent_tz)
-            if config.is_curfew_time(now_check):
+            if config.is_curfew_time(now_check) and not ignore_curfew:
                 logger.warning(f"🛑 Vaqt 21:45 ga yetdi ({now_check.strftime('%H:%M:%S')})! Tungi xavfsizlik taqiqi kuchga kirdi. Qolgan hisoblar to'xtatildi.")
                 try:
                     await bot.send_message(

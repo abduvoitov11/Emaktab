@@ -39,8 +39,25 @@ SESSIONS_DIR = os.path.join(BASE_DIR, "sessions")
 greeted_recipients = set()
 
 
-def find_excel_files():
+def find_excel_files(target_class=None):
     """Mavjud barcha sinf va foydalanuvchi Excel fayllarini aniqlaydi."""
+    if target_class:
+        t = target_class.strip().upper().replace(" ", "").replace("-", "")
+        if t in ["3D", "3-D"]:
+            f3d = os.path.join(BASE_DIR, "3-D_Royxati.xlsx")
+            if os.path.exists(f3d):
+                return [f3d]
+            dl_3d = "/home/torabek/Downloads/3-D_Royxati.xlsx"
+            if os.path.exists(dl_3d):
+                return [dl_3d]
+        elif t in ["9B", "9-B"]:
+            f9b = os.path.join(BASE_DIR, "9-B_Royxati.xlsx")
+            if os.path.exists(f9b):
+                return [f9b]
+            dl_9b = "/home/torabek/Downloads/9-B_Royxati.xlsx"
+            if os.path.exists(dl_9b):
+                return [dl_9b]
+
     class_files = [
         os.path.join(BASE_DIR, "9-B_Royxati.xlsx"),
         os.path.join(BASE_DIR, "3-D_Royxati.xlsx")
@@ -66,11 +83,14 @@ def find_excel_files():
     return [f for f in class_files if os.path.exists(f)] or [default_excel]
 
 
-def load_accounts(file_paths=None):
+def load_accounts(file_paths=None, target_class=None):
     if file_paths is None:
-        file_paths = find_excel_files()
+        file_paths = find_excel_files(target_class=target_class)
     elif isinstance(file_paths, str):
         file_paths = [file_paths]
+
+    if target_class:
+        target_class = target_class.strip().upper().replace(" ", "")
 
     accounts = []
     seen_logins = set()
@@ -99,6 +119,13 @@ def load_accounts(file_paths=None):
                     l_str = str(login).strip()
                     if l_str in seen_logins:
                         continue
+                    sinf_name = str(sinf).strip().upper().replace(" ", "")
+                    if target_class:
+                        norm_target = target_class.replace("-", "")
+                        norm_sinf = sinf_name.replace("-", "")
+                        if norm_target != norm_sinf:
+                            continue
+
                     seen_logins.add(l_str)
                     accounts.append({
                         "login": l_str,
@@ -239,9 +266,22 @@ async def run_local():
     bot = create_bot()
     os.makedirs(MEDIA_DIR, exist_ok=True)
 
+    target_class = os.getenv("TARGET_CLASS")
+    for arg in sys.argv[1:]:
+        if arg.startswith("--class="):
+            target_class = arg.split("=", 1)[1]
+        elif arg.upper() in ["3D", "3-D", "9B", "9-B"]:
+            target_class = arg
+
+    ignore_curfew = (
+        os.getenv("IGNORE_CURFEW", "false").lower() == "true" or
+        "--force" in sys.argv or
+        "--ignore-curfew" in sys.argv
+    )
+
     tashkent_tz = zoneinfo.ZoneInfo("Asia/Tashkent")
     now = datetime.now(tashkent_tz)
-    if config.is_curfew_time(now):
+    if config.is_curfew_time(now) and not ignore_curfew:
         print(f"\n🛑 DIQQAT: TUNGI XAVFSIZLIK TAQIQI (21:45 - 07:00) FAOL! ({now.strftime('%H:%M:%S')})")
         print("eMaktab.uz tizimiga tungi soatlarda kirish qat'iyan taqiqlangan (Anti-BAN xavfsizligi).")
         print("Dastur ertalab soat 07:00 dan keyin ishga tushishi mumkin.\n")
@@ -259,10 +299,10 @@ async def run_local():
             pass
         return
 
-    excel_files = find_excel_files()
+    excel_files = find_excel_files(target_class=target_class)
     file_names = ", ".join([os.path.basename(f) for f in excel_files])
-    print(f"Excel fayllardan ma'lumotlar o'qilmoqda: {file_names}...")
-    accounts = load_accounts(excel_files)
+    print(f"Excel fayllardan ma'lumotlar o'qilmoqda: {file_names} (Sinf filtri: {target_class or 'Barchasi'})...")
+    accounts = load_accounts(excel_files, target_class=target_class)
     print(f"Jami {len(accounts)} ta hisob topildi. Dastur ishga tushmoqda...")
 
     async with async_playwright() as p:
@@ -274,7 +314,7 @@ async def run_local():
         success_count = 0
         for i, acc in enumerate(accounts, 1):
             now_check = datetime.now(tashkent_tz)
-            if config.is_curfew_time(now_check):
+            if config.is_curfew_time(now_check) and not ignore_curfew:
                 print(f"🛑 Vaqt 21:45 ga yetdi ({now_check.strftime('%H:%M:%S')})! Tungi taqiq kuchga kirdi. Qolgan hisoblar to'xtatildi.")
                 try:
                     await bot.send_message(

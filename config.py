@@ -68,3 +68,22 @@ def is_curfew_time(dt=None) -> bool:
     
     return current_time >= curfew_start or current_time < curfew_end
 
+
+def enforce_curfew_or_die(action_name="Login"):
+    """
+    Qat'iy xavfsizlik himoyasi:
+    Agar soat 21:45 dan 07:00 gacha bo'lsa, hech qanday istisnosiz
+    tizimni to'xtatadi va PermissionError chiqaradi.
+    """
+    if is_curfew_time():
+        import zoneinfo
+        from datetime import datetime
+        tz = zoneinfo.ZoneInfo("Asia/Tashkent")
+        now_str = datetime.now(tz).strftime('%H:%M:%S')
+        raise PermissionError(
+            f"🛑 QAT'IY TUNGI TAQIQ (21:45 - 07:00) KUCHAYTIRILGAN! (Hozirgi vaqt: {now_str})\n"
+            f"eMaktab.uz tizimi xavfsizligi va Anti-BAN qoidalariga ko'ra tungi soatlarda '{action_name}' qilish QAT'IYAN TAQIQLANADI!\n"
+            f"Tizim faqat ertalab soat 07:00 dan boshlab ishlaydi."
+        )
+
+

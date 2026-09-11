@@ -348,46 +348,118 @@ async def run_local():
                     continue
 
             try:
-                print(f"[~] {login} uchun 1-sahifa to'liq yuklanishi 6 soniya kutilmoqda...")
-                await asyncio.sleep(6.0)
+                # === AQLLI BROWSING: Barcha sahifalarni o'zi topib bosadi ===
+                print(f"[🤖] {login} — Aqlli browsing sessiyasi boshlanmoqda...")
 
-                # HECH QANDAY TUGMA BOSILMASDAN 1-sahifa rasmi olinadi
+                # 1. Bosh sahifada skrinshot + scroll
                 photo_path = os.path.join(MEDIA_DIR, f"{login}.png")
                 await page.screenshot(path=photo_path, full_page=False)
+                print(f"[📸] Bosh sahifa skrinshoti olindi.")
+                await smooth_scroll_down(page, steps=2)
+                await asyncio.sleep(random.uniform(0.8, 1.3))
+                await smooth_scroll_up(page, steps=2)
+                await asyncio.sleep(random.uniform(0.5, 1.0))
 
-                await smooth_scroll_down(page, steps=3)
-                await asyncio.sleep(1.0)
-                await smooth_scroll_up(page, steps=3)
-                await asyncio.sleep(1.0)
+                # 2. Nav menudan barcha tugmalarni topib bosish
+                nav_selectors = [
+                    'a:has-text("Kundalik")',
+                    'a:has-text("Дневник")',
+                    'a:has-text("Dnevnik")',
+                    'a:has-text("Dars jadvali")',
+                    'a:has-text("Расписание")',
+                    'a:has-text("Jadval")',
+                    'a:has-text("Yangiliklar")',
+                    'a:has-text("Лента")',
+                    'a:has-text("Novosti")',
+                    'a:has-text("Baholar")',
+                    'a:has-text("Оценки")',
+                    'a:has-text("Baholar tasmasi")',
+                    'a:has-text("Reyting")',
+                    'a:has-text("Рейтинг")',
+                ]
 
-                # Dars jadvalini ochish
-                kundalik_btn = await page.query_selector('a:has-text("Kundalik"), a:has-text("Dnevnik"), a:has-text("Dars jadvali")')
-                if kundalik_btn:
+                visited_texts = set()
+                for selector in nav_selectors:
                     try:
-                        await kundalik_btn.click()
-                        await page.wait_for_load_state("domcontentloaded", timeout=10000)
+                        btn = await page.query_selector(selector)
+                        if not btn:
+                            continue
+                        btn_text = (await btn.inner_text()).strip()
+                        if btn_text in visited_texts:
+                            continue
+                        visited_texts.add(btn_text)
+
+                        print(f"[🖱️] '{btn_text}' sahifasiga o'tilmoqda...")
+                        await btn.click()
+                        await page.wait_for_load_state("domcontentloaded", timeout=12000)
+                        await asyncio.sleep(random.uniform(1.2, 2.0))
+
+                        await smooth_scroll_down(page, steps=random.randint(2, 4))
+                        await asyncio.sleep(random.uniform(0.8, 1.5))
+                        await smooth_scroll_up(page, steps=random.randint(1, 3))
+                        await asyncio.sleep(random.uniform(0.5, 1.0))
+
+                    except Exception as ex:
+                        continue
+
+                # 3. Sidebar / Panel ichidagi qo'shimcha bo'limlar
+                sidebar_selectors = [
+                    '.user-info, .profile-link, a:has-text("Profil"), a:has-text("Профиль")',
+                    'a:has-text("Xabar"), a:has-text("Bildirishnoma"), .notification-link',
+                ]
+                for selector in sidebar_selectors:
+                    try:
+                        btn = await page.query_selector(selector)
+                        if btn:
+                            btn_text = (await btn.inner_text()).strip()[:30]
+                            if btn_text not in visited_texts:
+                                visited_texts.add(btn_text)
+                                print(f"[🖱️] Panel: '{btn_text}' bosilmoqda...")
+                                await btn.click()
+                                await page.wait_for_load_state("domcontentloaded", timeout=10000)
+                                await asyncio.sleep(random.uniform(1.0, 1.8))
+                                await smooth_scroll_down(page, steps=2)
+                                await asyncio.sleep(random.uniform(0.6, 1.0))
+                                await smooth_scroll_up(page, steps=2)
+                                await asyncio.sleep(random.uniform(0.4, 0.8))
                     except Exception:
-                        pass
+                        continue
 
-                await asyncio.sleep(2.0)
-                await smooth_scroll_down(page, steps=4)
-                await asyncio.sleep(1.5)
-                await smooth_scroll_up(page, steps=4)
-                await asyncio.sleep(1.0)
+                # 4. Bosh sahifani o'zi topib qaytish — AQLLI QIDIRISH
+                print(f"[🏠] {login} — Bosh sahifani qidirib qaytilmoqda...")
+                home_found = False
 
-                # Qaytish
-                home_btn = await page.query_selector('a:has-text("Bosh sahifa"), a:has-text("Glavnaya"), a.header__logo')
-                if home_btn:
+                home_selectors = [
+                    'a.header__logo',
+                    'a[href="/"], a[href="/userfeed"], a[href="/home"]',
+                    'a:has-text("Bosh sahifa")',
+                    'a:has-text("Главная")',
+                    'a:has-text("Главная страница")',
+                    '.logo a, .header-logo a',
+                    'nav a:first-child',
+                ]
+                for selector in home_selectors:
                     try:
-                        await home_btn.click()
-                        await page.wait_for_load_state("domcontentloaded", timeout=10000)
+                        btn = await page.query_selector(selector)
+                        if btn:
+                            print(f"[✅] Bosh sahifa topildi: '{selector}'")
+                            await btn.click()
+                            await page.wait_for_load_state("domcontentloaded", timeout=12000)
+                            home_found = True
+                            break
+                    except Exception:
+                        continue
+
+                if not home_found:
+                    print("[🏠] URL orqali bosh sahifaga o'tilmoqda...")
+                    try:
+                        await page.goto("https://emaktab.uz/userfeed", wait_until="domcontentloaded", timeout=15000)
                     except Exception:
                         await page.go_back()
-                else:
-                    await page.go_back()
 
-                print(f"[~] {login} uchun asosiy sahifada 2.5s kutilmoqda...")
-                await asyncio.sleep(2.5)
+                # 5. Bosh sahifada 2 soniya kutish va videoni yakunlash
+                print(f"[⏱️] {login} — Bosh sahifada 2 soniya kutilmoqda (video yakunlanmoqda)...")
+                await asyncio.sleep(2.0)
 
                 await page.close()
                 raw_video_path = await page.video.path()
@@ -421,8 +493,9 @@ async def run_local():
                 print(f"[-] {login} xatosi: {e}")
                 try:
                     await context.close()
-                except:
+                except Exception:
                     pass
+
 
             if i < len(accounts):
                 pause = random.randint(12, 22)

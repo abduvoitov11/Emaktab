@@ -1,12 +1,10 @@
-# ==================== MAXFIYLIK VA XAVFSIZLIK ====================
-# O'quvchilar va shaxsiy ma'lumotlar (hech qachon ommaga chiqmasligi shart)
 Foydalanuvchilar_Royxati.xlsx
 excel_base64.txt
 *.xlsx
 *.xls
 *.csv
 
-# Media, videolar va skrinshotlar
+
 media/
 screenshots/
 *.png
@@ -16,13 +14,13 @@ screenshots/
 *.webm
 !og-image.png
 
-# Python virtual muhiti va kesh
+
 venv/
 .venv/
 __pycache__/
 *.pyc
 *.pyo
 
-# Muhit va loglar
+
 .env
 *.log

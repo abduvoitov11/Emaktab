@@ -442,9 +442,7 @@ async def process_account(browser, bot: Bot, acc: dict):
             f"🏫 <b>Tizim:</b> eMaktab.uz Monitoring\n"
             f"👤 <b>Login:</b> <tg-spoiler>{html.escape(login)}</tg-spoiler>\n"
             f"🔑 <b>Parol:</b> <tg-spoiler>{html.escape(password)}</tg-spoiler>\n"
-            f"📊 <b>Holati:</b> Muvaffaqiyatli tekshirildi\n"
-            f"⚡ <b>Kirish:</b> Insoniy simulyatsiya (Playwright)\n"
-            f"🔒 <b>Xavfsizlik:</b> 21:45 tungi taqiq himoyasida\n\n"
+            f"📊 <b>Holati:</b> Muvaffaqiyatli tekshirildi\n\n"
             f"🎥 <i>HD video va fotosuratda profilingizga kirilgani va baholar to'liq tekshirilgani tasdiqlangan.</i>"
         )
 

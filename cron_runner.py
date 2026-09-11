@@ -33,23 +33,52 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DEFAULT_EXCEL = os.path.join(BASE_DIR, "Foydalanuvchilar_Royxati.xlsx")
-if not os.path.exists(DEFAULT_EXCEL):
-    if os.getenv("EXCEL_BASE64"):
-        import base64
-        try:
-            with open(DEFAULT_EXCEL, "wb") as f:
-                f.write(base64.b64decode(os.getenv("EXCEL_BASE64")))
-            logger.info("Excel fayl shifrlangan GitHub Secret (EXCEL_BASE64) dan xavfsiz tiklandi.")
-        except Exception as e:
-            logger.error(f"EXCEL_BASE64 ni dekodlashda xato: {e}")
-    elif os.path.exists("/home/torabek/Downloads/Foydalanuvchilar_Royxati.xlsx"):
-        DEFAULT_EXCEL = "/home/torabek/Downloads/Foydalanuvchilar_Royxati.xlsx"
-EXCEL_FILE = os.getenv("EXCEL_FILE", DEFAULT_EXCEL)
 MEDIA_DIR = os.path.join(BASE_DIR, "media")
 SESSIONS_DIR = os.path.join(BASE_DIR, "sessions")
 
 greeted_recipients = set()
+
+
+def find_excel_files():
+    """Mavjud barcha sinf va foydalanuvchi Excel fayllarini aniqlaydi."""
+    # 1. Alohida sinf fayllari (9-B_Royxati.xlsx, 3-D_Royxati.xlsx)
+    class_files = [
+        os.path.join(BASE_DIR, "9-B_Royxati.xlsx"),
+        os.path.join(BASE_DIR, "3-D_Royxati.xlsx")
+    ]
+    if all(os.path.exists(f) for f in class_files):
+        return class_files
+
+    # 2. Asosiy umumiy fayl
+    default_excel = os.path.join(BASE_DIR, "Foydalanuvchilar_Royxati.xlsx")
+    if not os.path.exists(default_excel) and os.getenv("EXCEL_BASE64"):
+        import base64
+        try:
+            with open(default_excel, "wb") as f:
+                f.write(base64.b64decode(os.getenv("EXCEL_BASE64")))
+            logger.info("Excel fayl shifrlangan GitHub Secret (EXCEL_BASE64) dan xavfsiz tiklandi.")
+        except Exception as e:
+            logger.error(f"EXCEL_BASE64 ni dekodlashda xato: {e}")
+
+    if os.path.exists(default_excel):
+        return [default_excel]
+
+    # 3. Downloads papkasi tekshiruvi
+    dl_class_files = [
+        "/home/torabek/Downloads/9-B_Royxati.xlsx",
+        "/home/torabek/Downloads/3-D_Royxati.xlsx"
+    ]
+    if all(os.path.exists(f) for f in dl_class_files):
+        return dl_class_files
+
+    dl_main = "/home/torabek/Downloads/Foydalanuvchilar_Royxati.xlsx"
+    if os.path.exists(dl_main):
+        return [dl_main]
+
+    return [f for f in class_files if os.path.exists(f)] or [default_excel]
+
+
+EXCEL_FILES = find_excel_files()
 
 
 def solve_captcha(image_bytes: bytes) -> str:
@@ -75,34 +104,56 @@ def create_bot():
     return Bot(token=config.BOT_TOKEN, request=request)
 
 
-def load_accounts_by_class(file_path: str):
-    if not os.path.exists(file_path):
-        logger.error(f"Excel fayl topilmadi: {file_path}")
-        return {}
-
-    wb = openpyxl.load_workbook(file_path, data_only=True)
-    ws = wb.active
+def load_accounts_by_class(file_paths=None):
+    if file_paths is None:
+        file_paths = find_excel_files()
+    elif isinstance(file_paths, str):
+        file_paths = [file_paths]
 
     classes = {}
-    for r in range(2, ws.max_row + 1):
-        login = ws.cell(row=r, column=2).value
-        password = ws.cell(row=r, column=3).value
-        chat_id = ws.cell(row=r, column=4).value
-        sinf = ws.cell(row=r, column=5).value or "9-B"
+    seen_logins = set()
 
-        if login and password:
-            sinf_name = str(sinf).strip().upper()
-            if sinf_name not in classes:
-                classes[sinf_name] = []
-            classes[sinf_name].append({
-                "login": str(login).strip(),
-                "password": str(password).strip(),
-                "chat_id": int(chat_id) if chat_id else config.SUPER_ADMIN_ID,
-                "sinf": sinf_name
-            })
+    for fp in file_paths:
+        if not os.path.exists(fp):
+            logger.warning(f"Excel fayl topilmadi: {fp}")
+            continue
+
+        try:
+            wb = openpyxl.load_workbook(fp, data_only=True)
+            ws = wb.active
+            for r in range(2, ws.max_row + 1):
+                login = ws.cell(row=r, column=2).value
+                password = ws.cell(row=r, column=3).value
+                chat_id = ws.cell(row=r, column=4).value
+                sinf = ws.cell(row=r, column=5).value
+
+                if not sinf:
+                    if "9-B" in fp or "9B" in fp:
+                        sinf = "9-B"
+                    elif "3-D" in fp or "3D" in fp:
+                        sinf = "3-D"
+                    else:
+                        sinf = "9-B"
+
+                if login and password:
+                    l_str = str(login).strip()
+                    if l_str in seen_logins:
+                        continue
+                    seen_logins.add(l_str)
+                    sinf_name = str(sinf).strip().upper()
+                    if sinf_name not in classes:
+                        classes[sinf_name] = []
+                    classes[sinf_name].append({
+                        "login": l_str,
+                        "password": str(password).strip(),
+                        "chat_id": int(chat_id) if chat_id else config.SUPER_ADMIN_ID,
+                        "sinf": sinf_name
+                    })
+        except Exception as e:
+            logger.error(f"{fp} ni o'qishda xato: {e}")
 
     total = sum(len(v) for v in classes.values())
-    logger.info(f"Excel fayldan {len(classes)} ta sinf bo'yicha jami {total} ta hisob yuklandi.")
+    logger.info(f"Excel fayllardan {len(classes)} ta sinf bo'yicha jami {total} ta hisob yuklandi.")
     return classes
 
 
@@ -602,7 +653,7 @@ async def run():
         logger.info(f"Anti-BAN: Boshlanishdan oldin {jitter} soniya tasodifiy kutilmoqda...")
         await asyncio.sleep(jitter)
 
-    classes = load_accounts_by_class(EXCEL_FILE)
+    classes = load_accounts_by_class()
     if not classes:
         logger.error("Hech qanday hisob topilmadi!")
         return

@@ -33,14 +33,83 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DEFAULT_EXCEL = os.path.join(BASE_DIR, "Foydalanuvchilar_Royxati.xlsx")
-if not os.path.exists(DEFAULT_EXCEL):
-    DEFAULT_EXCEL = "/home/torabek/Downloads/Foydalanuvchilar_Royxati.xlsx"
-EXCEL_FILE = os.getenv("EXCEL_FILE", DEFAULT_EXCEL)
 MEDIA_DIR = os.path.join(BASE_DIR, "media")
 SESSIONS_DIR = os.path.join(BASE_DIR, "sessions")
 
 greeted_recipients = set()
+
+
+def find_excel_files():
+    """Mavjud barcha sinf va foydalanuvchi Excel fayllarini aniqlaydi."""
+    class_files = [
+        os.path.join(BASE_DIR, "9-B_Royxati.xlsx"),
+        os.path.join(BASE_DIR, "3-D_Royxati.xlsx")
+    ]
+    if all(os.path.exists(f) for f in class_files):
+        return class_files
+
+    default_excel = os.path.join(BASE_DIR, "Foydalanuvchilar_Royxati.xlsx")
+    if os.path.exists(default_excel):
+        return [default_excel]
+
+    dl_class_files = [
+        "/home/torabek/Downloads/9-B_Royxati.xlsx",
+        "/home/torabek/Downloads/3-D_Royxati.xlsx"
+    ]
+    if all(os.path.exists(f) for f in dl_class_files):
+        return dl_class_files
+
+    dl_main = "/home/torabek/Downloads/Foydalanuvchilar_Royxati.xlsx"
+    if os.path.exists(dl_main):
+        return [dl_main]
+
+    return [f for f in class_files if os.path.exists(f)] or [default_excel]
+
+
+def load_accounts(file_paths=None):
+    if file_paths is None:
+        file_paths = find_excel_files()
+    elif isinstance(file_paths, str):
+        file_paths = [file_paths]
+
+    accounts = []
+    seen_logins = set()
+
+    for fp in file_paths:
+        if not os.path.exists(fp):
+            continue
+        try:
+            wb = openpyxl.load_workbook(fp, data_only=True)
+            ws = wb.active
+            for r in range(2, ws.max_row + 1):
+                login = ws.cell(row=r, column=2).value
+                password = ws.cell(row=r, column=3).value
+                chat_id = ws.cell(row=r, column=4).value
+                sinf = ws.cell(row=r, column=5).value
+
+                if not sinf:
+                    if "9-B" in fp or "9B" in fp:
+                        sinf = "9-B"
+                    elif "3-D" in fp or "3D" in fp:
+                        sinf = "3-D"
+                    else:
+                        sinf = "9-B"
+
+                if login and password:
+                    l_str = str(login).strip()
+                    if l_str in seen_logins:
+                        continue
+                    seen_logins.add(l_str)
+                    accounts.append({
+                        "login": l_str,
+                        "password": str(password).strip(),
+                        "chat_id": int(chat_id) if chat_id else config.SUPER_ADMIN_ID,
+                        "sinf": str(sinf).strip().upper()
+                    })
+        except Exception as e:
+            print(f"[-] {fp} faylini o'qishda xatolik: {e}")
+
+    return accounts
 
 
 def solve_captcha(image_bytes: bytes) -> str:
@@ -190,25 +259,10 @@ async def run_local():
             pass
         return
 
-    print(f"Excel fayldan ma'lumotlar o'qilmoqda: {EXCEL_FILE}...")
-    wb = openpyxl.load_workbook(EXCEL_FILE, data_only=True)
-    ws = wb.active
-
-    accounts = []
-    for r in range(2, ws.max_row + 1):
-        login = ws.cell(row=r, column=2).value
-        password = ws.cell(row=r, column=3).value
-        chat_id = ws.cell(row=r, column=4).value
-        sinf = ws.cell(row=r, column=5).value or "9-B"
-
-        if login and password:
-            accounts.append({
-                "login": str(login).strip(),
-                "password": str(password).strip(),
-                "chat_id": int(chat_id) if chat_id else config.SUPER_ADMIN_ID,
-                "sinf": str(sinf).strip().upper()
-            })
-
+    excel_files = find_excel_files()
+    file_names = ", ".join([os.path.basename(f) for f in excel_files])
+    print(f"Excel fayllardan ma'lumotlar o'qilmoqda: {file_names}...")
+    accounts = load_accounts(excel_files)
     print(f"Jami {len(accounts)} ta hisob topildi. Dastur ishga tushmoqda...")
 
     async with async_playwright() as p:

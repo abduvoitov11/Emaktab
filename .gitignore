@@ -24,3 +24,10 @@ __pycache__/
 
 .env
 *.log
+
+# Sessiyalar (cookie/token fayllar — hech qachon commitlanmaydi!)
+sessions/
+
+# Test natijalar
+test_output/
+test_captcha.py

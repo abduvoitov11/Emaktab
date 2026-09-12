@@ -591,6 +591,66 @@ async def process_account(browser, bot: Bot, acc: dict):
         return False
 
 
+def check_and_filter_active_classes(today_batch, bot):
+    """
+    Obunasi to'xtatilgan (paused) yoki muddati o'tgan (expired) sinflarni
+    eMaktab monitoring navbatidan chiqarib tashlaydi.
+    """
+    import json
+    teachers_file = os.path.join(BASE_DIR, "teachers.json")
+    teachers = {}
+    if os.path.exists(teachers_file):
+        try:
+            with open(teachers_file, "r", encoding="utf-8") as f:
+                teachers = json.load(f)
+        except Exception as e:
+            logger.error(f"teachers.json o'qishda xato: {e}")
+
+    active_classes = set()
+    paused_or_expired_classes = {}
+    today_date = datetime.now(zoneinfo.ZoneInfo("Asia/Tashkent")).date()
+
+    for uid, t in teachers.items():
+        c_name = str(t.get("class", "")).strip().upper().replace(" ", "").replace("-", "")
+        status = t.get("status", "active")
+        exp_str = t.get("expires_at", "")
+        is_active = (status == "active")
+        if exp_str:
+            try:
+                exp_date = datetime.strptime(exp_str, "%Y-%m-%d").date()
+                if exp_date < today_date:
+                    is_active = False
+            except Exception:
+                pass
+
+        if is_active:
+            active_classes.add(c_name)
+        else:
+            paused_or_expired_classes[c_name] = {
+                "name": t.get("name", "Ustoz"),
+                "status": status,
+                "expires_at": exp_str
+            }
+
+    filtered_batch = []
+    skipped_count = 0
+    for acc in today_batch:
+        acc_sinf = str(acc.get("sinf", "")).strip().upper().replace(" ", "").replace("-", "")
+        if not teachers or acc_sinf in active_classes:
+            filtered_batch.append(acc)
+        else:
+            skipped_count += 1
+            info = paused_or_expired_classes.get(acc_sinf, {})
+            logger.warning(
+                f"⏸️ Sinf {acc.get('sinf')} ({acc.get('login')}) o'tkazib yuborildi. "
+                f"Ustoz: {info.get('name', 'Noma\'lum')}, Holati: {info.get('status', 'noma\'lum')}, Muddati: {info.get('expires_at')}"
+            )
+
+    if skipped_count > 0:
+        logger.info(f"🛡️ Obunasi tugagan/muzlatilgan {skipped_count} ta hisob bugungi monitoringdan chetlatildi.")
+
+    return filtered_batch
+
 
 async def run():
     bot = create_bot()
@@ -617,7 +677,7 @@ async def run():
             "🌙 <b>Holat:</b> Dam olish vaqti faol\n"
             "🌅 Tizim ertalab soat <b>07:00</b> da qayta faollashadi."
         )
-        logger.warning(f"🛑 TUNGI TAQIQ: Soat {now.strftime('%H:%M:%S')} — 21:45 dan 07:00 gacha login qilish qat'iyan taqiqlangan! Jarayon to'xtatildi.")
+        logger.warning(f"🛑 TUNGI TAQIQ: Soat {now.strftime('%H:%M:%S')} — 21:45 dan 07:00 gacha login qilish qat'iyan taqiqlanadi! Jarayon to'xtatildi.")
         try:
             await bot.send_message(
                 chat_id=config.SUPER_ADMIN_ID,
@@ -645,6 +705,21 @@ async def run():
         weekday = 5
     elif custom_day in ["6", "sun", "yakshanba"]:
         weekday = 6
+
+    # schedule_config.json dan faol kunlarni tekshirish
+    sch_file = os.path.join(BASE_DIR, "schedule_config.json")
+    if os.path.exists(sch_file):
+        try:
+            import json
+            with open(sch_file, "r", encoding="utf-8") as f:
+                sch_cfg = json.load(f)
+                active_days = sch_cfg.get("active_days", [])
+                day_name_uz = day_names.get(weekday, "").lower()
+                if active_days and (day_name_uz not in [d.lower() for d in active_days]) and not force_run:
+                    logger.info(f"🛑 Bugun {day_name_uz.upper()} — Admin grafik sozlamalariga ko'ra dam olish kuni. eMaktabga kirish to'xtatildi.")
+                    return
+        except Exception as e:
+            logger.warning(f"schedule_config.json tekshirishda ogohlantirish: {e}")
 
     if weekday == 4 and not force_run:
         logger.info("🛑 Bugun JUMA — dam olish kuni. eMaktabga kirish qat'iyan to'xtatildi!")

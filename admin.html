@@ -373,6 +373,90 @@
         .btn-action.delete { border-color: rgba(218, 54, 51, 0.4); color: #f85149; }
         .btn-refresh { background: none; border: none; color: var(--accent); font-size: 12px; cursor: pointer; }
 
+        .live-sync-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(46, 160, 67, 0.15);
+            border: 1px solid rgba(46, 160, 67, 0.4);
+            color: #3fb950;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        .pulse-dot {
+            width: 8px;
+            height: 8px;
+            background-color: #3fb950;
+            border-radius: 50%;
+            box-shadow: 0 0 8px #3fb950;
+            animation: pulseGlow 1.5s infinite;
+        }
+        @keyframes pulseGlow {
+            0% { transform: scale(0.9); opacity: 0.7; }
+            50% { transform: scale(1.2); opacity: 1; box-shadow: 0 0 12px #3fb950; }
+            100% { transform: scale(0.9); opacity: 0.7; }
+        }
+        .pat-btn {
+            background: #21262d;
+            border: 1px solid #30363d;
+            color: #8b949e;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+        .pat-btn.configured {
+            border-color: rgba(56, 139, 253, 0.4);
+            color: #58a6ff;
+            background: rgba(56, 139, 253, 0.1);
+        }
+        .floating-toast {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-100px);
+            background: #161b22;
+            border: 1px solid #30363d;
+            color: #f0f6fc;
+            padding: 12px 22px;
+            border-radius: 30px;
+            box-shadow: 0 12px 35px rgba(0,0,0,0.85);
+            font-size: 13px;
+            font-weight: 600;
+            z-index: 9999999;
+            opacity: 0;
+            transition: all 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            pointer-events: none;
+        }
+        .floating-toast.show {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+        }
+        .floating-toast.success {
+            border-color: #2ea043;
+            background: rgba(13, 30, 20, 0.96);
+            color: #3fb950;
+            box-shadow: 0 12px 35px rgba(46, 160, 67, 0.35);
+        }
+        .floating-toast.error {
+            border-color: #f85149;
+            background: rgba(36, 13, 15, 0.96);
+            color: #ff7b72;
+            box-shadow: 0 12px 35px rgba(248, 81, 73, 0.35);
+        }
+        .floating-toast.info {
+            border-color: #58a6ff;
+            background: rgba(13, 24, 38, 0.96);
+            color: #79c0ff;
+        }
+
         .toast {
             display: none;
             padding: 10px 14px;
@@ -450,11 +534,30 @@
     </div>
 
     <!-- 3. ASOSIY ROOT DASHBOARD (Faqat Root Admin kirganda ochiladi) -->
+    <div id="floatingToast" class="floating-toast"></div>
+
     <div id="mainDashboard">
         <div class="header">
             <h1>👑 Root Boshqaruv Markazi</h1>
             <p>AvtoEmaktab • Obunalar va Random Grafik Nazorati</p>
             <div class="auth-badge">🛡️ Kriptografik Tasdiqlangan: Root (6291811673)</div>
+            
+            <div style="display:flex; justify-content:center; align-items:center; gap:10px; margin-top:12px; flex-wrap:wrap;">
+                <div class="live-sync-indicator" id="liveSyncStatus">
+                    <span class="pulse-dot"></span>
+                    <span>🟢 Jonli Real-Time Aloqa Faol</span>
+                </div>
+                <button class="pat-btn" onclick="togglePatConfig()" id="patStatusBtn">🔑 GitHub Cloud Sync</button>
+            </div>
+
+            <div id="patConfigBox" style="display:none; margin-top:12px; padding:12px; background:rgba(22,27,34,0.95); border:1px solid #30363d; border-radius:8px; text-align:left;">
+                <label style="font-size:12px; color:#8b949e; display:block; margin-bottom:6px;">GitHub Personal Access Token (PAT):</label>
+                <div style="display:flex; gap:8px;">
+                    <input type="password" id="ghPatInput" placeholder="ghp_..." style="flex:1; padding:8px 10px; background:#0d1117; border:1px solid #30363d; border-radius:6px; color:#fff; font-size:12px;">
+                    <button onclick="savePat()" class="btn-primary" style="padding:6px 14px; font-size:12px;">Saqlash</button>
+                </div>
+                <p style="font-size:11px; color:#8b949e; margin-top:6px;">Token brauzeringizda xavfsiz saqlanadi va real-time o'zgarishlarni GitHub Contents API orqali sinxronlaydi.</p>
+            </div>
         </div>
 
         <!-- Random Vaqtlar va Kunlar Grafigi -->
@@ -535,8 +638,17 @@
         <div class="card">
             <h2>
                 <span>📋 Obunalar Monitoringi</span>
-                <button class="btn-refresh" onclick="loadTeachers()">🔄 Yangilash</button>
+                <button class="btn-refresh" onclick="loadTeachers(false)">🔄 Yangilash</button>
             </h2>
+
+            <!-- Real-Time Jonli Statistika Paneli -->
+            <div class="stats-row" style="display:flex; justify-content:space-around; margin:10px 0; font-size:12px; color:#8b949e; background:#090d13; padding:10px; border-radius:8px; border:1px solid rgba(48,54,61,0.6);">
+                <span>👥 Jami: <b id="cntTotal" style="color:#f0f6fc;">0</b></span>
+                <span>🟢 Faol: <b id="cntActive" style="color:#3fb950;">0</b></span>
+                <span>⏸️ Muzlatilgan: <b id="cntPaused" style="color:#d29922;">0</b></span>
+                <span>🎒 O'quvchilar: <b id="cntStudents" style="color:#58a6ff;">0</b></span>
+            </div>
+
             <div class="teachers-list" id="teachersList">
                 <p style="font-size:12px; color:#8b949e; text-align:center;">Yuklanmoqda...</p>
             </div>
@@ -548,7 +660,92 @@
     const ROOT_ID = 6291811673;
     const API_BASE = "https://avtoemaktab.vercel.app/api/telegram";
 
-    // Anti-DevTools Himoyasi (F12 va Inspect blok)
+    let teachersState = {};
+    let toastTimeout = null;
+
+    // Toast bildirishnoma ko'rsatish
+    function showToast(msg, type = "info") {
+        const toast = document.getElementById("floatingToast");
+        if (!toast) return;
+        clearTimeout(toastTimeout);
+        toast.className = `floating-toast show ${type}`;
+        let icon = "ℹ️";
+        if (type === "success") icon = "✅";
+        if (type === "error") icon = "❌";
+        toast.innerHTML = `<span>${icon}</span> <span>${msg}</span>`;
+        toastTimeout = setTimeout(() => {
+            toast.className = "floating-toast";
+        }, 3200);
+    }
+
+    // GitHub PAT boshqaruvi
+    function getSavedPat() {
+        return localStorage.getItem("admin_gh_pat") || "";
+    }
+
+    function togglePatConfig() {
+        const box = document.getElementById("patConfigBox");
+        const input = document.getElementById("ghPatInput");
+        if (box.style.display === "none" || !box.style.display) {
+            box.style.display = "block";
+            input.value = getSavedPat();
+            input.focus();
+        } else {
+            box.style.display = "none";
+        }
+    }
+
+    async function savePat() {
+        const input = document.getElementById("ghPatInput");
+        const val = input.value.trim();
+        if (!val.startsWith("ghp_")) {
+            showToast("PAT formati xato! 'ghp_' bilan boshlanishi lozim.", "error");
+            return;
+        }
+        localStorage.setItem("admin_gh_pat", val);
+        showToast("⏳ PAT serverda tekshirilmoqda...", "info");
+        try {
+            const res = await fetch(API_BASE, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ action: "set_pat", root_id: ROOT_ID, pat: val })
+            });
+            const r = await res.json();
+            if (r.ok && r.valid) {
+                showToast("✅ GitHub Cloud Sync muvaffaqiyatli ulandi!", "success");
+                updatePatButton(true);
+                document.getElementById("patConfigBox").style.display = "none";
+                loadTeachers(false);
+            } else {
+                showToast("⚠️ PAT saqlandi, ammo GitHub API dan 200 olinmadi.", "error");
+            }
+        } catch (e) {
+            showToast("PAT saqlandi (tarmoq xatosi bo'ldi)", "info");
+        }
+    }
+
+    function updatePatButton(isReady) {
+        const btn = document.getElementById("patStatusBtn");
+        if (!btn) return;
+        if (isReady || getSavedPat()) {
+            btn.className = "pat-btn configured";
+            btn.innerHTML = "🟢 GitHub Sync: Ulangan";
+        } else {
+            btn.className = "pat-btn";
+            btn.innerHTML = "⚠️ GitHub Sync: PAT Sozlash";
+        }
+    }
+
+    function getApiHeaders() {
+        const headers = { "Content-Type": "application/json" };
+        const pat = getSavedPat();
+        if (pat) {
+            headers["X-GitHub-PAT"] = pat;
+        }
+        return headers;
+    }
+
+    // Anti-DevTools Himoyasi
     document.addEventListener("keydown", (e) => {
         if (e.key === "F12" || (e.ctrlKey && e.shiftKey && (e.key === "I" || e.key === "J" || e.key === "C")) || (e.ctrlKey && e.key === "U")) {
             e.preventDefault();
@@ -601,7 +798,6 @@
         const urlParams = new URLSearchParams(window.location.search);
         const secretKey = urlParams.get("key");
 
-        // Faqat haqiqiy Root Telegram ID si bilan kirilganda
         if ((user && user.id === ROOT_ID) || secretKey === "ae_root_9940911219") {
             if (tg) {
                 tg.expand();
@@ -610,15 +806,18 @@
             loadingEl.style.display = "none";
             deniedEl.style.display = "none";
             mainEl.style.display = "block";
+            updatePatButton(Boolean(getSavedPat()));
             loadSchedule();
-            loadTeachers();
+            loadTeachers(false);
+
+            // Jonli avto-yangilanish (Real-Time Polling)
+            setInterval(() => loadTeachers(true), 5000);
+            setInterval(() => loadSchedule(true), 15000);
         } else {
-            // BEGONA FOYDALANUVCHI -> 3D KIBER FORBIDDEN EKRAN!
             loadingEl.style.display = "none";
             deniedEl.style.display = "block";
             mainEl.style.display = "none";
 
-            // Forensik izlarni terminalda aks ettirish va Root ga yuborish
             collectVisitorForensics().then(f => {
                 document.getElementById("disp_ip").innerText = f.ip + (f.city ? ` (${f.city})` : '');
                 document.getElementById("disp_isp").innerText = f.org;
@@ -648,84 +847,81 @@
         });
     });
 
-    async function loadSchedule() {
+    async function loadSchedule(silent = false) {
         try {
-            const res = await fetch(`${API_BASE}?action=get_schedule&root_id=${ROOT_ID}`);
+            const pat = getSavedPat();
+            const url = `${API_BASE}?action=get_schedule&root_id=${ROOT_ID}${pat ? `&pat=${encodeURIComponent(pat)}` : ''}`;
+            const res = await fetch(url, { headers: getApiHeaders() });
             const data = await res.json();
             if (data.ok && data.schedule) {
                 const s = data.schedule;
-                document.getElementById("timeStart").value = s.time_window_start || "14:00";
-                document.getElementById("timeEnd").value = s.time_window_end || "20:00";
-                document.querySelectorAll(".day-chip").forEach(chip => {
-                    const day = chip.getAttribute("data-day");
-                    if (s.active_days && s.active_days.includes(day)) {
-                        chip.classList.add("active");
-                    } else {
-                        chip.classList.remove("active");
-                    }
-                });
+                if (!silent || document.activeElement.tagName !== "INPUT") {
+                    document.getElementById("timeStart").value = s.time_window_start || "14:00";
+                    document.getElementById("timeEnd").value = s.time_window_end || "20:00";
+                    document.querySelectorAll(".day-chip").forEach(chip => {
+                        const day = chip.getAttribute("data-day");
+                        if (s.active_days && s.active_days.includes(day)) {
+                            chip.classList.add("active");
+                        } else {
+                            chip.classList.remove("active");
+                        }
+                    });
+                }
+                if (data.pat_configured) updatePatButton(true);
             }
         } catch (e) {}
     }
 
     async function saveSchedule() {
-        const toast = document.getElementById("scheduleToast");
-        toast.className = "toast";
         const activeDays = [];
         document.querySelectorAll(".day-chip.active").forEach(chip => {
             activeDays.push(chip.getAttribute("data-day"));
         });
 
+        showToast("⏳ Random grafik saqlanmoqda...", "info");
+
         try {
             const res = await fetch(API_BASE, {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: getApiHeaders(),
                 body: JSON.stringify({
                     action: "save_schedule",
                     root_id: ROOT_ID,
                     active_days: activeDays,
                     time_window_start: document.getElementById("timeStart").value,
-                    time_window_end: document.getElementById("timeEnd").value
+                    time_window_end: document.getElementById("timeEnd").value,
+                    gh_pat: getSavedPat()
                 })
             });
             const r = await res.json();
             if (r.ok) {
-                toast.className = "toast success";
-                toast.innerText = "✅ Random grafik muvaffaqiyatli saqlandi!";
+                showToast("✅ Random grafik real-time saqlandi!", "success");
             } else {
-                toast.className = "toast error";
-                toast.innerText = "❌ Xato: " + (r.error || "Saqlanmadi");
+                showToast("❌ Xato: " + (r.error || "Saqlanmadi"), "error");
             }
         } catch (err) {
-            toast.className = "toast error";
-            toast.innerText = "❌ Xato: " + err.message;
+            showToast("❌ Xato: " + err.message, "error");
         }
     }
 
     async function triggerRunNow() {
         if (!confirm("Hozir darhol eMaktab monitoringini ishga tushirmoqchimisiz?")) return;
-        const toast = document.getElementById("scheduleToast");
-        toast.className = "toast";
-        toast.style.display = "block";
-        toast.innerText = "⏳ GitHub Actions ga signal yuborilmoqda...";
+        showToast("⏳ GitHub Actions ga signal yuborilmoqda...", "info");
 
         try {
             const res = await fetch(API_BASE, {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ action: "trigger_run", root_id: ROOT_ID })
+                headers: getApiHeaders(),
+                body: JSON.stringify({ action: "trigger_run", root_id: ROOT_ID, gh_pat: getSavedPat() })
             });
             const r = await res.json();
             if (r.ok) {
-                toast.className = "toast success";
-                toast.innerText = "🚀 Monitoring ishga tushirildi! Natijalar Telegramga keladi.";
+                showToast("🚀 Monitoring ishga tushirildi! Natijalar Telegramga keladi.", "success");
             } else {
-                toast.className = "toast error";
-                toast.innerText = "❌ Xato: " + (r.error || "Ishga tushmadi");
+                showToast("❌ Xato: " + (r.error || "Ishga tushmadi"), "error");
             }
         } catch (e) {
-            toast.className = "toast error";
-            toast.innerText = "❌ Xato: " + e.message;
+            showToast("❌ Xato: " + e.message, "error");
         }
     }
 
@@ -737,100 +933,214 @@
         } catch (e) { return 0; }
     }
 
-    async function loadTeachers() {
+    function updateStats(teachers) {
+        let total = 0;
+        let active = 0;
+        let paused = 0;
+        let students = 0;
+
+        for (const t of Object.values(teachers)) {
+            total++;
+            students += (parseInt(t.students_count) || 0);
+            if (t.status === "paused") {
+                paused++;
+            } else if (getDaysDiff(t.expires_at) > 0) {
+                active++;
+            } else {
+                paused++;
+            }
+        }
+
+        document.getElementById("cntTotal").innerText = total;
+        document.getElementById("cntActive").innerText = active;
+        document.getElementById("cntPaused").innerText = paused;
+        document.getElementById("cntStudents").innerText = students;
+    }
+
+    function renderTeachers(teachers) {
         const listEl = document.getElementById("teachersList");
-        listEl.innerHTML = "<p style='font-size:12px; color:#8b949e; text-align:center;'>Yuklanmoqda...</p>";
+        if (!teachers || Object.keys(teachers).length === 0) {
+            listEl.innerHTML = "<p style='font-size:12px; color:#8b949e; text-align:center;'>Ustozlar yo'q</p>";
+            return;
+        }
+
+        listEl.innerHTML = "";
+        for (const [uid, t] of Object.entries(teachers)) {
+            const daysLeft = getDaysDiff(t.expires_at);
+            let badgeClass = "badge-active";
+            let badgeText = "🟢 Faol";
+
+            if (t.status === "paused") {
+                badgeClass = "badge-paused";
+                badgeText = "⏸️ Muzlatilgan";
+            } else if (daysLeft <= 0) {
+                badgeClass = "badge-expired";
+                badgeText = "🔴 Muddati tugagan";
+            } else {
+                badgeText = `🟢 ${daysLeft} kun qoldi`;
+            }
+
+            const item = document.createElement("div");
+            item.className = "teacher-item";
+            item.id = `teacher-${uid}`;
+            item.innerHTML = `
+                <div class="t-header">
+                    <div class="t-info">
+                        <h3>👤 ${t.name} (${t.class})</h3>
+                        <p>🆔 <code>${uid}</code> • ${t.students_count || 0} o'quvchi</p>
+                        <p>📅 Obuna: <b class="exp-date">${t.expires_at}</b></p>
+                    </div>
+                    <span class="t-badge ${badgeClass}">${badgeText}</span>
+                </div>
+                <div class="t-actions">
+                    <button class="btn-action extend" onclick="modifySubscription('${uid}', 'extend', 15)">➕ 15 kun</button>
+                    <button class="btn-action extend" onclick="modifySubscription('${uid}', 'extend', 30)">➕ 30 kun</button>
+                    <button class="btn-action extend" onclick="modifySubscription('${uid}', 'extend', 90)">➕ 3 oy</button>
+                    ${t.status === 'paused' 
+                        ? `<button class="btn-action" onclick="modifySubscription('${uid}', 'resume')">▶️ Faollashtirish</button>`
+                        : `<button class="btn-action pause" onclick="modifySubscription('${uid}', 'pause')">⏸️ Muzlatish</button>`
+                    }
+                    <button class="btn-action delete" onclick="deleteTeacher('${uid}', '${t.name}')">🗑️ O'chirish</button>
+                </div>
+            `;
+            listEl.appendChild(item);
+        }
+        updateStats(teachers);
+    }
+
+    async function loadTeachers(silent = false) {
+        const listEl = document.getElementById("teachersList");
+        if (!silent && (!teachersState || Object.keys(teachersState).length === 0)) {
+            listEl.innerHTML = "<p style='font-size:12px; color:#8b949e; text-align:center;'>Yuklanmoqda...</p>";
+        }
 
         try {
-            const res = await fetch(`${API_BASE}?action=get_teachers&root_id=${ROOT_ID}`);
+            const pat = getSavedPat();
+            const url = `${API_BASE}?action=get_teachers&root_id=${ROOT_ID}${pat ? `&pat=${encodeURIComponent(pat)}` : ''}`;
+            const res = await fetch(url, { headers: getApiHeaders() });
             const data = await res.json();
-            listEl.innerHTML = "";
 
-            if (!data.teachers || Object.keys(data.teachers).length === 0) {
-                listEl.innerHTML = "<p style='font-size:12px; color:#8b949e; text-align:center;'>Ustozlar yo'q</p>";
-                return;
-            }
-
-            for (const [uid, t] of Object.entries(data.teachers)) {
-                const daysLeft = getDaysDiff(t.expires_at);
-                let badgeClass = "badge-active";
-                let badgeText = "🟢 Faol";
-
-                if (t.status === "paused") {
-                    badgeClass = "badge-paused";
-                    badgeText = "⏸️ Muzlatilgan";
-                } else if (daysLeft <= 0) {
-                    badgeClass = "badge-expired";
-                    badgeText = "🔴 Muddati tugagan";
-                } else {
-                    badgeText = `🟢 ${daysLeft} kun qoldi`;
+            if (data.ok && data.teachers) {
+                const newStr = JSON.stringify(data.teachers);
+                const oldStr = JSON.stringify(teachersState);
+                if (newStr !== oldStr) {
+                    teachersState = data.teachers;
+                    renderTeachers(data.teachers);
                 }
-
-                const item = document.createElement("div");
-                item.className = "teacher-item";
-                item.innerHTML = `
-                    <div class="t-header">
-                        <div class="t-info">
-                            <h3>👤 ${t.name} (${t.class})</h3>
-                            <p>🆔 <code>${uid}</code> • ${t.students_count || 0} o'quvchi</p>
-                            <p>📅 Obuna: <b>${t.expires_at}</b></p>
-                        </div>
-                        <span class="t-badge ${badgeClass}">${badgeText}</span>
-                    </div>
-                    <div class="t-actions">
-                        <button class="btn-action extend" onclick="modifySubscription('${uid}', 'extend', 15)">➕ 15 kun</button>
-                        <button class="btn-action extend" onclick="modifySubscription('${uid}', 'extend', 30)">➕ 30 kun</button>
-                        <button class="btn-action extend" onclick="modifySubscription('${uid}', 'extend', 90)">➕ 3 oy</button>
-                        ${t.status === 'paused' 
-                            ? `<button class="btn-action" onclick="modifySubscription('${uid}', 'resume')">▶️ Faollashtirish</button>`
-                            : `<button class="btn-action pause" onclick="modifySubscription('${uid}', 'pause')">⏸️ Muzlatish</button>`
-                        }
-                        <button class="btn-action delete" onclick="deleteTeacher('${uid}', '${t.name}')">🗑️ O'chirish</button>
-                    </div>
-                `;
-                listEl.appendChild(item);
+                if (data.pat_configured) updatePatButton(true);
             }
         } catch (err) {
-            listEl.innerHTML = "<p style='font-size:12px; color:#f85149; text-align:center;'>Xatolik: " + err.message + "</p>";
+            if (!silent) {
+                listEl.innerHTML = "<p style='font-size:12px; color:#f85149; text-align:center;'>Xatolik: " + err.message + "</p>";
+            }
         }
     }
 
+    // Real-Time Optimistik Obuna Boshqaruvi
     async function modifySubscription(telegramId, actionType, days = 0) {
-        if (!confirm("Amalni tasdiqlaysizmi?")) return;
+        const teacherCard = document.getElementById(`teacher-${telegramId}`);
+        const currentTeacher = teachersState[telegramId];
+
+        // 1. Optimistik ko'rinishni darhol yangilash (0 ms kechikish)
+        if (teacherCard && currentTeacher) {
+            const badgeEl = teacherCard.querySelector(".t-badge");
+            const expEl = teacherCard.querySelector(".exp-date");
+
+            if (actionType === "extend") {
+                const currExp = new Date(currentTeacher.expires_at || new Date());
+                const baseDate = currExp > new Date() ? currExp : new Date();
+                baseDate.setDate(baseDate.getDate() + days);
+                const newExpStr = baseDate.toISOString().split("T")[0];
+                if (expEl) expEl.innerText = newExpStr;
+                if (badgeEl) {
+                    badgeEl.className = "t-badge badge-active";
+                    badgeEl.innerText = `🟢 ${getDaysDiff(newExpStr)} kun qoldi`;
+                }
+                showToast(`⚡ ${currentTeacher.name} obunasi +${days} kunga uzaytirildi!`, "success");
+            } else if (actionType === "pause") {
+                if (badgeEl) {
+                    badgeEl.className = "t-badge badge-paused";
+                    badgeEl.innerText = "⏸️ Muzlatilgan";
+                }
+                showToast(`⏸️ ${currentTeacher.name} obunasi muzlatildi!`, "info");
+            } else if (actionType === "resume") {
+                if (badgeEl) {
+                    badgeEl.className = "t-badge badge-active";
+                    badgeEl.innerText = "🟢 Faol";
+                }
+                showToast(`🟢 ${currentTeacher.name} obunasi qayta faollashtirildi!`, "success");
+            }
+        }
+
+        // 2. Serverga yuborish
         try {
             const res = await fetch(API_BASE, {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ action: "manage_subscription", root_id: ROOT_ID, telegram_id: telegramId, sub_action: actionType, days: days })
+                headers: getApiHeaders(),
+                body: JSON.stringify({
+                    action: "manage_subscription",
+                    root_id: ROOT_ID,
+                    telegram_id: telegramId,
+                    sub_action: actionType,
+                    days: days,
+                    gh_pat: getSavedPat()
+                })
             });
             const r = await res.json();
-            if (r.ok) {
-                alert("✅ Obuna yangilandi!");
-                loadTeachers();
-            } else { alert("❌ Xatolik: " + (r.error || "Bajarilmadi")); }
-        } catch (e) { alert("❌ Tarmoq xatosi: " + e.message); }
+            if (r.ok && r.teachers) {
+                teachersState = r.teachers;
+                renderTeachers(r.teachers);
+            } else if (!r.ok) {
+                showToast("❌ Xato: " + (r.error || "Bajarilmadi"), "error");
+                loadTeachers(false);
+            }
+        } catch (e) {
+            showToast("⚠️ Tarmoq xatosi: " + e.message, "error");
+        }
     }
 
+    // Ustozni o'chirish
     async function deleteTeacher(telegramId, name) {
         if (!confirm(`${name} ustozni tizimdan o'chirmoqchimisiz?`)) return;
+
+        // Optimistik ravishda DOM dan olib tashlash
+        const teacherCard = document.getElementById(`teacher-${telegramId}`);
+        if (teacherCard) {
+            teacherCard.style.transition = "all 0.3s ease";
+            teacherCard.style.opacity = "0";
+            teacherCard.style.transform = "scale(0.9)";
+            setTimeout(() => teacherCard.remove(), 300);
+        }
+        showToast(`🗑️ ${name} ustoz o'chirildi!`, "info");
+
         try {
             const res = await fetch(API_BASE, {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ action: "delete_teacher", root_id: ROOT_ID, telegram_id: telegramId })
+                headers: getApiHeaders(),
+                body: JSON.stringify({
+                    action: "delete_teacher",
+                    root_id: ROOT_ID,
+                    telegram_id: telegramId,
+                    gh_pat: getSavedPat()
+                })
             });
             const r = await res.json();
-            if (r.ok) {
-                alert(`🗑️ ${name} ustoz o'chirildi!`);
-                loadTeachers();
-            } else { alert("❌ Xatolik: " + r.error); }
-        } catch (e) { alert("❌ Xato: " + e.message); }
+            if (r.ok && r.teachers) {
+                teachersState = r.teachers;
+                updateStats(r.teachers);
+            } else if (!r.ok) {
+                showToast("❌ Xato: " + r.error, "error");
+                loadTeachers(false);
+            }
+        } catch (e) {
+            showToast("❌ Xato: " + e.message, "error");
+        }
     }
 
+    // Yangi ustoz qo'shish formasi
     document.getElementById("addTeacherForm").addEventListener("submit", async (e) => {
         e.preventDefault();
         const btn = document.getElementById("submitBtn");
-        const toast = document.getElementById("toast");
         btn.disabled = true;
         btn.innerText = "⏳ Qo'shilmoqda...";
 
@@ -841,30 +1151,35 @@
             name: document.getElementById("t_name").value.trim(),
             class_name: document.getElementById("t_class").value.trim(),
             students_count: parseInt(document.getElementById("t_count").value),
-            days: parseInt(document.getElementById("t_days").value)
+            days: parseInt(document.getElementById("t_days").value),
+            gh_pat: getSavedPat()
         };
+
+        showToast(`⏳ ${payload.name} ustoz tizimga qo'shilmoqda...`, "info");
 
         try {
             const res = await fetch(API_BASE, {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: getApiHeaders(),
                 body: JSON.stringify(payload)
             });
             const r = await res.json();
             if (r.ok) {
-                toast.className = "toast success";
-                toast.innerText = `✅ ${payload.name} ustoz (${payload.class_name}) qo'shildi!`;
+                showToast(`🎉 ${payload.name} ustoz (${payload.class_name}) qo'shildi va Telegramga tabrik xabari yuborildi!`, "success");
                 document.getElementById("addTeacherForm").reset();
                 document.getElementById("t_count").value = "30";
                 document.getElementById("t_days").value = "30";
-                loadTeachers();
+                if (r.teachers) {
+                    teachersState = r.teachers;
+                    renderTeachers(r.teachers);
+                } else {
+                    loadTeachers(false);
+                }
             } else {
-                toast.className = "toast error";
-                toast.innerText = "❌ Xatolik: " + (r.error || "Qo'shilmadi");
+                showToast("❌ Xatolik: " + (r.error || "Qo'shilmadi"), "error");
             }
         } catch (err) {
-            toast.className = "toast error";
-            toast.innerText = "❌ Xato: " + err.message;
+            showToast("❌ Xato: " + err.message, "error");
         } finally {
             btn.disabled = false;
             btn.innerText = "⚡ Yangi Hisob Ochish va Faollashtirish";

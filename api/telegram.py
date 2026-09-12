@@ -40,14 +40,98 @@ SCHEDULE_FILE = os.path.join(os.path.dirname(__file__), "..", "schedule_config.j
 GITHUB_REPO = "abduvoitov11/Emaktab"
 GITHUB_PAT = os.getenv("GITHUB_PAT", "")
 
+# In-memory keshlash (real-time tezkor javob uchun)
+_teachers_cache = None
+_teachers_cache_time = 0
+_schedule_cache = None
+_schedule_cache_time = 0
+CACHE_TTL = 3  # soniya
+
+def get_active_gh_pat(passed_pat: str = None) -> str:
+    """GitHub PAT ni ustuvorlik tartibida oladi:
+    1. So'rov orqali kelgan passed_pat
+    2. /tmp/gh_pat.txt da saqlangan PAT
+    3. OS muhit o'zgaruvchisi os.getenv("GITHUB_PAT")
+    """
+    if passed_pat and isinstance(passed_pat, str) and passed_pat.strip().startswith("ghp_"):
+        clean_pat = passed_pat.strip()
+        try:
+            with open("/tmp/gh_pat.txt", "w", encoding="utf-8") as f:
+                f.write(clean_pat)
+        except Exception:
+            pass
+        return clean_pat
+
+    try:
+        if os.path.exists("/tmp/gh_pat.txt"):
+            with open("/tmp/gh_pat.txt", "r", encoding="utf-8") as f:
+                saved = f.read().strip()
+                if saved.startswith("ghp_"):
+                    return saved
+    except Exception:
+        pass
+
+    env_pat = os.getenv("GITHUB_PAT", "").strip()
+    if env_pat.startswith("ghp_"):
+        return env_pat
+
+    return ""
+
 
 # ==================== AUTH & DATA FUNCTIONS ====================
 
-def load_teachers() -> dict:
+def load_teachers(force_remote: bool = False, passed_pat: str = None) -> dict:
+    global _teachers_cache, _teachers_cache_time
+    now = datetime.now().timestamp()
+    if not force_remote and _teachers_cache is not None and (now - _teachers_cache_time) < CACHE_TTL:
+        return _teachers_cache
+
+    pat = get_active_gh_pat(passed_pat)
+    # 1. GitHub Contents API orqali eng oxirgi jonli versiyani olamiz
+    if pat:
+        try:
+            url = f"https://api.github.com/repos/{GITHUB_REPO}/contents/teachers.json"
+            headers = {
+                "Authorization": f"token {pat}",
+                "Accept": "application/vnd.github+json",
+                "User-Agent": "AvtoEmaktab-Bot"
+            }
+            req = urllib.request.Request(url, headers=headers)
+            with urllib.request.urlopen(req, timeout=5) as resp:
+                if resp.status == 200:
+                    body = json.loads(resp.read().decode())
+                    content = base64.b64decode(body.get("content", "")).decode("utf-8")
+                    data = json.loads(content)
+                    _teachers_cache = data
+                    _teachers_cache_time = now
+                    try:
+                        with open("/tmp/teachers.json", "w", encoding="utf-8") as f:
+                            json.dump(data, f, ensure_ascii=False, indent=2)
+                    except Exception:
+                        pass
+                    return data
+        except Exception as e:
+            logger.warning(f"GitHub API dan ustozlarni yuklashda ogohlantirish: {e}")
+
+    # 2. /tmp/teachers.json dan o'qish
+    try:
+        if os.path.exists("/tmp/teachers.json"):
+            with open("/tmp/teachers.json", "r", encoding="utf-8") as f:
+                data = json.load(f)
+                _teachers_cache = data
+                _teachers_cache_time = now
+                return data
+    except Exception:
+        pass
+
+    # 3. Zaxira: lokal teachers.json
     try:
         if os.path.exists(TEACHERS_FILE):
             with open(TEACHERS_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
+                data = json.load(f)
+                _teachers_cache = data
+                _teachers_cache_time = now
+                return data
     except Exception as e:
         logger.error(f"Error loading teachers: {e}")
     return {}
@@ -62,28 +146,110 @@ def is_authorized_user(user_id: int) -> bool:
 
 
 def save_teachers_locally(data: dict):
+    global _teachers_cache, _teachers_cache_time
+    _teachers_cache = data
+    _teachers_cache_time = datetime.now().timestamp()
     try:
-        with open(TEACHERS_FILE, "w", encoding="utf-8") as f:
+        with open("/tmp/teachers.json", "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
     except Exception as e:
-        logger.error(f"Error saving teachers locally: {e}")
+        logger.error(f"Error saving teachers to /tmp: {e}")
+    try:
+        if os.path.exists(TEACHERS_FILE) and os.access(TEACHERS_FILE, os.W_OK):
+            with open(TEACHERS_FILE, "w", encoding="utf-8") as f:
+                json.dump(data, f, ensure_ascii=False, indent=2)
+    except Exception:
+        pass
 
 
-def sync_file_to_github(filename: str, data: any, commit_msg: str):
+def load_schedule(force_remote: bool = False, passed_pat: str = None) -> dict:
+    global _schedule_cache, _schedule_cache_time
+    now = datetime.now().timestamp()
+    if not force_remote and _schedule_cache is not None and (now - _schedule_cache_time) < CACHE_TTL:
+        return _schedule_cache
+
+    pat = get_active_gh_pat(passed_pat)
+    if pat:
+        try:
+            url = f"https://api.github.com/repos/{GITHUB_REPO}/contents/schedule_config.json"
+            headers = {
+                "Authorization": f"token {pat}",
+                "Accept": "application/vnd.github+json",
+                "User-Agent": "AvtoEmaktab-Bot"
+            }
+            req = urllib.request.Request(url, headers=headers)
+            with urllib.request.urlopen(req, timeout=5) as resp:
+                if resp.status == 200:
+                    body = json.loads(resp.read().decode())
+                    content = base64.b64decode(body.get("content", "")).decode("utf-8")
+                    data = json.loads(content)
+                    _schedule_cache = data
+                    _schedule_cache_time = now
+                    try:
+                        with open("/tmp/schedule_config.json", "w", encoding="utf-8") as f:
+                            json.dump(data, f, ensure_ascii=False, indent=2)
+                    except Exception:
+                        pass
+                    return data
+        except Exception as e:
+            logger.warning(f"GitHub API dan grafik yuklashda ogohlantirish: {e}")
+
+    try:
+        if os.path.exists("/tmp/schedule_config.json"):
+            with open("/tmp/schedule_config.json", "r", encoding="utf-8") as f:
+                data = json.load(f)
+                _schedule_cache = data
+                _schedule_cache_time = now
+                return data
+    except Exception:
+        pass
+
+    try:
+        if os.path.exists(SCHEDULE_FILE):
+            with open(SCHEDULE_FILE, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                _schedule_cache = data
+                _schedule_cache_time = now
+                return data
+    except Exception as e:
+        logger.error(f"Error loading schedule: {e}")
+    return {}
+
+
+def save_schedule_locally(data: dict):
+    global _schedule_cache, _schedule_cache_time
+    _schedule_cache = data
+    _schedule_cache_time = datetime.now().timestamp()
+    try:
+        with open("/tmp/schedule_config.json", "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        logger.error(f"Error saving schedule to /tmp: {e}")
+    try:
+        if os.path.exists(SCHEDULE_FILE) and os.access(SCHEDULE_FILE, os.W_OK):
+            with open(SCHEDULE_FILE, "w", encoding="utf-8") as f:
+                json.dump(data, f, ensure_ascii=False, indent=2)
+    except Exception:
+        pass
+
+
+def sync_file_to_github(filename: str, data: any, commit_msg: str, passed_pat: str = None) -> bool:
     """Vercel serverless muhitida faylni GitHub repoga avtomat commit qilish"""
-    if not GITHUB_PAT:
-        return
+    pat = get_active_gh_pat(passed_pat)
+    if not pat:
+        logger.warning(f"GitHub sync skipped ({filename}): GITHUB_PAT mavjud emas")
+        return False
     try:
         url = f"https://api.github.com/repos/{GITHUB_REPO}/contents/{filename}"
         headers = {
-            "Authorization": f"token {GITHUB_PAT}",
+            "Authorization": f"token {pat}",
             "Accept": "application/vnd.github+json",
             "User-Agent": "AvtoEmaktab-Bot"
         }
         req = urllib.request.Request(url, headers=headers)
         sha = None
         try:
-            with urllib.request.urlopen(req) as resp:
+            with urllib.request.urlopen(req, timeout=5) as resp:
                 if resp.status == 200:
                     body = json.loads(resp.read().decode())
                     sha = body.get("sha")
@@ -102,10 +268,12 @@ def sync_file_to_github(filename: str, data: any, commit_msg: str):
 
         data_bytes = json.dumps(payload).encode("utf-8")
         put_req = urllib.request.Request(url, data=data_bytes, headers=headers, method="PUT")
-        with urllib.request.urlopen(put_req) as resp:
+        with urllib.request.urlopen(put_req, timeout=10) as resp:
             logger.info(f"GitHub sync ({filename}) status: {resp.status}")
+            return resp.status in (200, 201)
     except Exception as e:
         logger.error(f"GitHub sync error ({filename}): {e}")
+        return False
 
 
 def record_security_incident(user_id: int, name: str, username: str, command_text: str, incident_type: str = "UNAUTHORIZED_ACCESS"):
@@ -710,7 +878,7 @@ class handler(BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header("Access-Control-Allow-Origin", "*")
         self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-        self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type, X-GitHub-PAT")
         self.end_headers()
 
     def do_GET(self):
@@ -719,11 +887,23 @@ class handler(BaseHTTPRequestHandler):
         self.send_header("Access-Control-Allow-Origin", "*")
         self.end_headers()
 
+        passed_pat = self.headers.get("X-GitHub-PAT", "")
+        if "pat=" in self.path:
+            import urllib.parse
+            parsed_qs = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+            if "pat" in parsed_qs and parsed_qs["pat"]:
+                passed_pat = parsed_qs["pat"][0]
+
         # Agar admin panel ustozlar ro'yxatini so'rasa
         if "action=get_teachers" in self.path:
             if "root_id=6291811673" in self.path:
-                teachers = load_teachers()
-                self.wfile.write(json.dumps({"ok": True, "teachers": teachers}).encode())
+                teachers = load_teachers(force_remote=True, passed_pat=passed_pat)
+                self.wfile.write(json.dumps({
+                    "ok": True,
+                    "teachers": teachers,
+                    "pat_configured": bool(get_active_gh_pat(passed_pat)),
+                    "server_time": datetime.now(zoneinfo.ZoneInfo("Asia/Tashkent")).strftime("%Y-%m-%d %H:%M:%S")
+                }).encode())
                 return
             else:
                 self.wfile.write(json.dumps({"ok": False, "error": "Ruxsat yo'q"}).encode())
@@ -732,14 +912,12 @@ class handler(BaseHTTPRequestHandler):
         # Agar admin panel grafik sozlamalarini so'rasa
         if "action=get_schedule" in self.path:
             if "root_id=6291811673" in self.path:
-                sch = {}
-                if os.path.exists(SCHEDULE_FILE):
-                    try:
-                        with open(SCHEDULE_FILE, 'r', encoding='utf-8') as f:
-                            sch = json.load(f)
-                    except Exception:
-                        pass
-                self.wfile.write(json.dumps({"ok": True, "schedule": sch}).encode())
+                sch = load_schedule(force_remote=True, passed_pat=passed_pat)
+                self.wfile.write(json.dumps({
+                    "ok": True,
+                    "schedule": sch,
+                    "pat_configured": bool(get_active_gh_pat(passed_pat))
+                }).encode())
                 return
             else:
                 self.wfile.write(json.dumps({"ok": False, "error": "Ruxsat yo'q"}).encode())
@@ -748,7 +926,8 @@ class handler(BaseHTTPRequestHandler):
         self.wfile.write(json.dumps({
             "status": "ok",
             "service": "AvtoEmaktab Webhook & Billing",
-            "message": "Bot ishlayapti!"
+            "message": "Bot ishlayapti!",
+            "pat_configured": bool(get_active_gh_pat(passed_pat))
         }).encode())
 
     def do_POST(self):
@@ -756,6 +935,7 @@ class handler(BaseHTTPRequestHandler):
             content_length = int(self.headers.get("Content-Length", 0))
             body = self.rfile.read(content_length)
             data = json.loads(body.decode("utf-8"))
+            passed_pat = data.get("gh_pat") or self.headers.get("X-GitHub-PAT", "")
 
             # Veb admin panelga begona shaxs kirishga uringanda
             if data.get("action") == "log_web_intrusion":
@@ -814,6 +994,38 @@ class handler(BaseHTTPRequestHandler):
                 self.wfile.write(json.dumps({"ok": True}).encode())
                 return
 
+            # PAT saqlash va tekshirish
+            if data.get("action") == "set_pat":
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.end_headers()
+
+                if int(data.get("root_id", 0)) != ROOT_ID:
+                    self.wfile.write(json.dumps({"ok": False, "error": "Ruxsatsiz amal!"}).encode())
+                    return
+
+                pat_to_set = str(data.get("pat", "")).strip()
+                if pat_to_set.startswith("ghp_"):
+                    saved_pat = get_active_gh_pat(pat_to_set)
+                    is_valid = False
+                    try:
+                        url = f"https://api.github.com/repos/{GITHUB_REPO}/contents/teachers.json"
+                        headers = {
+                            "Authorization": f"token {saved_pat}",
+                            "Accept": "application/vnd.github+json",
+                            "User-Agent": "AvtoEmaktab-Bot"
+                        }
+                        req = urllib.request.Request(url, headers=headers)
+                        with urllib.request.urlopen(req, timeout=5) as resp:
+                            is_valid = (resp.status == 200)
+                    except Exception:
+                        pass
+                    self.wfile.write(json.dumps({"ok": True, "valid": is_valid}).encode())
+                else:
+                    self.wfile.write(json.dumps({"ok": False, "error": "Noto'g'ri PAT formati"}).encode())
+                return
+
             # Agar saytdan yangi ustoz qo'shish so'rovi kelsa
             if data.get("action") == "add_teacher":
                 self.send_response(200)
@@ -834,7 +1046,7 @@ class handler(BaseHTTPRequestHandler):
                 today = datetime.now(zoneinfo.ZoneInfo("Asia/Tashkent")).date()
                 exp_date = (today + timedelta(days=days)).strftime("%Y-%m-%d")
 
-                teachers = load_teachers()
+                teachers = load_teachers(force_remote=False, passed_pat=passed_pat)
                 teachers[t_id] = {
                     "name": t_name,
                     "class": t_class,
@@ -843,7 +1055,7 @@ class handler(BaseHTTPRequestHandler):
                     "status": "active"
                 }
                 save_teachers_locally(teachers)
-                sync_file_to_github("teachers.json", teachers, f"feat(billing): add teacher {t_name} from web admin")
+                synced = sync_file_to_github("teachers.json", teachers, f"feat(billing): add teacher {t_name} from web admin", passed_pat=passed_pat)
 
                 # Ustozga avto tabrik xabari
                 try:
@@ -869,7 +1081,12 @@ class handler(BaseHTTPRequestHandler):
                 except Exception as ex:
                     logger.warning(f"Could not notify teacher: {ex}")
 
-                self.wfile.write(json.dumps({"ok": True, "expires_at": exp_date}).encode())
+                self.wfile.write(json.dumps({
+                    "ok": True,
+                    "expires_at": exp_date,
+                    "teachers": teachers,
+                    "synced": synced
+                }).encode())
                 return
 
             # Jadval sozlamalarini saqlash
@@ -887,15 +1104,14 @@ class handler(BaseHTTPRequestHandler):
                     "active_days": data.get("active_days", ["dushanba", "seshanba", "chorshanba", "payshanba", "shanba"]),
                     "time_window_start": data.get("time_window_start", "14:00"),
                     "time_window_end": data.get("time_window_end", "20:00"),
-                    "random_mode": True
+                    "random_mode": True,
+                    "min_pause_seconds": 20,
+                    "max_pause_seconds": 45,
+                    "next_scheduled_run": f"Bugun {data.get('time_window_start', '14:00')} - {data.get('time_window_end', '20:00')} oralig'ida"
                 }
-                try:
-                    with open(SCHEDULE_FILE, 'w', encoding='utf-8') as f:
-                        json.dump(sch, f, ensure_ascii=False, indent=2)
-                    sync_file_to_github("schedule_config.json", sch, "chore(schedule): update random monitoring window")
-                    self.wfile.write(json.dumps({"ok": True}).encode())
-                except Exception as ex:
-                    self.wfile.write(json.dumps({"ok": False, "error": str(ex)}).encode())
+                save_schedule_locally(sch)
+                synced = sync_file_to_github("schedule_config.json", sch, "chore(schedule): update random monitoring window", passed_pat=passed_pat)
+                self.wfile.write(json.dumps({"ok": True, "schedule": sch, "synced": synced}).encode())
                 return
 
             # Darhol ishga tushirish (GitHub Actions workflow_dispatch trigger)
@@ -910,7 +1126,10 @@ class handler(BaseHTTPRequestHandler):
                     return
 
                 try:
-                    gh_pat = os.getenv("GITHUB_PAT", GITHUB_PAT)
+                    gh_pat = get_active_gh_pat(passed_pat)
+                    if not gh_pat:
+                        self.wfile.write(json.dumps({"ok": False, "error": "GitHub PAT topilmadi!"}).encode())
+                        return
                     url = f"https://api.github.com/repos/{GITHUB_REPO}/actions/workflows/emaktab_cron.yml/dispatches"
                     headers = {
                         "Authorization": f"token {gh_pat}",
@@ -919,7 +1138,7 @@ class handler(BaseHTTPRequestHandler):
                     }
                     payload = {"ref": "main", "inputs": {"force_run": "true"}}
                     req = urllib.request.Request(url, data=json.dumps(payload).encode(), headers=headers, method="POST")
-                    with urllib.request.urlopen(req) as resp:
+                    with urllib.request.urlopen(req, timeout=10) as resp:
                         logger.info(f"GitHub workflow dispatch status: {resp.status}")
                     self.wfile.write(json.dumps({"ok": True}).encode())
                 except Exception as ex:
@@ -942,7 +1161,7 @@ class handler(BaseHTTPRequestHandler):
                 sub_action = data.get("sub_action")
                 days = int(data.get("days", 0))
 
-                teachers = load_teachers()
+                teachers = load_teachers(force_remote=False, passed_pat=passed_pat)
                 if t_id not in teachers:
                     self.wfile.write(json.dumps({"ok": False, "error": "Ustoz topilmadi"}).encode())
                     return
@@ -961,7 +1180,7 @@ class handler(BaseHTTPRequestHandler):
                     t["expires_at"] = new_exp
                     t["status"] = "active"
                     save_teachers_locally(teachers)
-                    sync_file_to_github("teachers.json", teachers, f"feat(billing): extend teacher {t_id} by {days} days from web")
+                    synced = sync_file_to_github("teachers.json", teachers, f"feat(billing): extend teacher {t_id} by {days} days from web", passed_pat=passed_pat)
 
                     # Ustozga xabar
                     try:
@@ -988,7 +1207,7 @@ class handler(BaseHTTPRequestHandler):
                 elif sub_action == "pause":
                     t["status"] = "paused"
                     save_teachers_locally(teachers)
-                    sync_file_to_github("teachers.json", teachers, f"chore(billing): pause teacher {t_id}")
+                    synced = sync_file_to_github("teachers.json", teachers, f"chore(billing): pause teacher {t_id}", passed_pat=passed_pat)
                     try:
                         loop = asyncio.new_event_loop()
                         async def notify_pause():
@@ -1015,7 +1234,7 @@ class handler(BaseHTTPRequestHandler):
                 elif sub_action == "resume":
                     t["status"] = "active"
                     save_teachers_locally(teachers)
-                    sync_file_to_github("teachers.json", teachers, f"chore(billing): resume teacher {t_id}")
+                    synced = sync_file_to_github("teachers.json", teachers, f"chore(billing): resume teacher {t_id}", passed_pat=passed_pat)
                     try:
                         loop = asyncio.new_event_loop()
                         async def notify_resume():
@@ -1040,7 +1259,7 @@ class handler(BaseHTTPRequestHandler):
                     except Exception as ex:
                         logger.warning(f"Could not notify resume to {t_id}: {ex}")
 
-                self.wfile.write(json.dumps({"ok": True}).encode())
+                self.wfile.write(json.dumps({"ok": True, "teachers": teachers, "synced": synced}).encode())
                 return
 
             # Eslatma xabari yuborish
@@ -1055,7 +1274,7 @@ class handler(BaseHTTPRequestHandler):
                     return
 
                 t_id = str(data.get("telegram_id")).strip()
-                teachers = load_teachers()
+                teachers = load_teachers(force_remote=False, passed_pat=passed_pat)
                 t = teachers.get(t_id, {})
                 t_name = t.get("name", "Hurmatli Ustoz")
                 exp_date = t.get("expires_at", "")
@@ -1097,11 +1316,11 @@ class handler(BaseHTTPRequestHandler):
                     return
 
                 t_id = str(data.get("telegram_id")).strip()
-                teachers = load_teachers()
+                teachers = load_teachers(force_remote=False, passed_pat=passed_pat)
                 if t_id in teachers:
                     deleted_t = teachers.pop(t_id)
                     save_teachers_locally(teachers)
-                    sync_file_to_github("teachers.json", teachers, f"chore(billing): delete teacher {t_id} from web")
+                    synced = sync_file_to_github("teachers.json", teachers, f"chore(billing): delete teacher {t_id} from web", passed_pat=passed_pat)
                     try:
                         loop = asyncio.new_event_loop()
                         async def notify_del():
@@ -1124,7 +1343,7 @@ class handler(BaseHTTPRequestHandler):
                         loop.close()
                     except Exception as ex:
                         logger.warning(f"Could not notify delete to {t_id}: {ex}")
-                    self.wfile.write(json.dumps({"ok": True}).encode())
+                    self.wfile.write(json.dumps({"ok": True, "teachers": teachers, "synced": synced}).encode())
                 else:
                     self.wfile.write(json.dumps({"ok": False, "error": "Ustoz topilmadi"}).encode())
                 return

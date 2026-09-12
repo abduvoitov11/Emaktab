@@ -34,78 +34,12 @@ ADMIN_PHONE = "+998 94 091 12 19"
 ROOT_ID = int(config.ROOT_ID)
 
 TEACHERS_FILE = os.path.join(os.path.dirname(__file__), "..", "teachers.json")
-
-INCIDENTS_FILE = os.path.join(os.path.dirname(__file__), '..', 'security_incidents.json')
-
-def record_security_incident(user_id: int, name: str, username: str, command_text: str, incident_type: str = 'UNAUTHORIZED_ACCESS'):
-    """Haqiqiy xavfsizlik jurnaliga yozish va arxivlash"""
-    now_str = datetime.now(zoneinfo.ZoneInfo('Asia/Tashkent')).strftime('%Y-%m-%d %H:%M:%S')
-    incident = {
-        'id': f'INC-{int(datetime.now().timestamp())}',
-        'timestamp': now_str,
-        'user_id': user_id,
-        'name': name,
-        'username': username,
-        'type': incident_type,
-        'attempted_command': command_text
-    }
-    try:
-        data = []
-        if os.path.exists(INCIDENTS_FILE):
-            with open(INCIDENTS_FILE, 'r', encoding='utf-8') as f:
-                data = json.load(f)
-        data.append(incident)
-        with open(INCIDENTS_FILE, 'w', encoding='utf-8') as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
-            
-        # Agar GitHub PAT bo'lsa repoga ham push
-        if GITHUB_PAT:
-            try:
-                url = f'https://api.github.com/repos/{GITHUB_REPO}/contents/security_incidents.json'
-                headers = {
-                    'Authorization': f'token {GITHUB_PAT}',
-                    'Accept': 'application/vnd.github+json',
-                    'User-Agent': 'AvtoEmaktab-Security'
-                }
-                req = urllib.request.Request(url, headers=headers)
-                sha = None
-                try:
-                    with urllib.request.urlopen(req) as resp:
-                        if resp.status == 200:
-                            body = json.loads(resp.read().decode())
-                            sha = body.get('sha')
-                except Exception:
-                    pass
-                content_str = json.dumps(data, ensure_ascii=False, indent=2)
-                content_b64 = base64.b64encode(content_str.encode('utf-8')).decode('utf-8')
-                payload = {
-                    'message': f'security: record incident {incident["id"]} from user {user_id}',
-                    'content': content_b64
-                }
-                if sha:
-                    payload['sha'] = sha
-                put_req = urllib.request.Request(url, data=json.dumps(payload).encode(), headers=headers, method='PUT')
-                urllib.request.urlopen(put_req)
-            except Exception as e:
-                logger.error(f'Sync incidents error: {e}')
-    except Exception as ex:
-        logger.error(f'Error recording incident: {ex}')
-    return incident
-
+INCIDENTS_FILE = os.path.join(os.path.dirname(__file__), "..", "security_incidents.json")
 GITHUB_REPO = "abduvoitov11/Emaktab"
-# Agar Vercel env'da bo'lsa GitHub PAT o'qiladi (faylni repoda avto-yangilash uchun)
 GITHUB_PAT = os.getenv("GITHUB_PAT", "")
 
 
-# ==================== DATA FUNCTIONS (TEACHERS) ====================
-
-
-def is_authorized_user(user_id: int) -> bool:
-    """Foydalanuvchi Root yoki ro'yxatdan o'tgan ustoz ekanligini tekshiradi"""
-    if user_id == ROOT_ID:
-        return True
-    teachers = load_teachers()
-    return str(user_id) in teachers
+# ==================== AUTH & DATA FUNCTIONS ====================
 
 def load_teachers() -> dict:
     try:
@@ -117,6 +51,14 @@ def load_teachers() -> dict:
     return {}
 
 
+def is_authorized_user(user_id: int) -> bool:
+    """Foydalanuvchi Root yoki ro'yxatdan o'tgan ustoz ekanligini tekshiradi"""
+    if user_id == ROOT_ID:
+        return True
+    teachers = load_teachers()
+    return str(user_id) in teachers
+
+
 def save_teachers_locally(data: dict):
     try:
         with open(TEACHERS_FILE, "w", encoding="utf-8") as f:
@@ -125,19 +67,17 @@ def save_teachers_locally(data: dict):
         logger.error(f"Error saving teachers locally: {e}")
 
 
-def sync_teachers_to_github(data: dict):
-    """Vercel serverless muhitida o'zgarishni GitHub repoga avtomat commit qilish"""
+def sync_file_to_github(filename: str, data: any, commit_msg: str):
+    """Vercel serverless muhitida faylni GitHub repoga avtomat commit qilish"""
     if not GITHUB_PAT:
         return
     try:
-        url = f"https://api.github.com/repos/{GITHUB_REPO}/contents/teachers.json"
+        url = f"https://api.github.com/repos/{GITHUB_REPO}/contents/{filename}"
         headers = {
             "Authorization": f"token {GITHUB_PAT}",
             "Accept": "application/vnd.github+json",
             "User-Agent": "AvtoEmaktab-Bot"
         }
-
-        # Faylning hozirgi SHA raqamini olish
         req = urllib.request.Request(url, headers=headers)
         sha = None
         try:
@@ -152,7 +92,7 @@ def sync_teachers_to_github(data: dict):
         content_b64 = base64.b64encode(content_str.encode("utf-8")).decode("utf-8")
 
         payload = {
-            "message": "chore(data): auto-update teachers.json from telegram bot",
+            "message": commit_msg,
             "content": content_b64
         }
         if sha:
@@ -161,9 +101,35 @@ def sync_teachers_to_github(data: dict):
         data_bytes = json.dumps(payload).encode("utf-8")
         put_req = urllib.request.Request(url, data=data_bytes, headers=headers, method="PUT")
         with urllib.request.urlopen(put_req) as resp:
-            logger.info(f"GitHub sync status: {resp.status}")
+            logger.info(f"GitHub sync ({filename}) status: {resp.status}")
     except Exception as e:
-        logger.error(f"GitHub sync error: {e}")
+        logger.error(f"GitHub sync error ({filename}): {e}")
+
+
+def record_security_incident(user_id: int, name: str, username: str, command_text: str, incident_type: str = "UNAUTHORIZED_ACCESS"):
+    """Haqiqiy xavfsizlik jurnaliga yozish va arxivlash"""
+    now_str = datetime.now(zoneinfo.ZoneInfo("Asia/Tashkent")).strftime("%Y-%m-%d %H:%M:%S")
+    incident = {
+        "id": f"INC-{int(datetime.now().timestamp())}",
+        "timestamp": now_str,
+        "user_id": user_id,
+        "name": name,
+        "username": username,
+        "type": incident_type,
+        "attempted_command": command_text
+    }
+    try:
+        data = []
+        if os.path.exists(INCIDENTS_FILE):
+            with open(INCIDENTS_FILE, "r", encoding="utf-8") as f:
+                data = json.load(f)
+        data.append(incident)
+        with open(INCIDENTS_FILE, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+        sync_file_to_github("security_incidents.json", data, f"security: record incident {incident['id']}")
+    except Exception as ex:
+        logger.error(f"Error recording incident: {ex}")
+    return incident
 
 
 # ==================== KLAVIATURALAR ====================
@@ -195,8 +161,8 @@ def get_back_keyboard() -> InlineKeyboardMarkup:
         [
             InlineKeyboardButton("🌐 Rasmiy Sayt", web_app=WebAppInfo(url=WEB_APP_URL)),
             InlineKeyboardButton(
-                "✍️ Buyurtma Berish",
-                url=f"https://t.me/{ADMIN_USERNAME}?text=Assalomu%20alaykum!%20AvtoEmaktab%20xizmati%20bo'yicha%20buyurtma%20bermoqchiman."
+                "✍️ Bog'lanish",
+                url=f"https://t.me/{ADMIN_USERNAME}"
             )
         ],
         [InlineKeyboardButton("◀️ Asosiy Menyu", callback_data="btn_main_menu")]
@@ -215,7 +181,7 @@ def get_welcome_text(user_first_name: str) -> str:
         f"Har kuni dars jadvalingiz tugashi bilanoq o'quvchilar profilingizga insoniy usulda kirilib, jurnallar tekshiriladi hamda shaxsiy Telegramingizga <b>1080p HD video va foto hisoboti</b> yetkaziladi.\n\n"
         f"🛡️ <b>Ishonchli Anti-BAN Himoyasi</b> (Tungi taqiq xavfsizligi)\n"
         f"⏱️ <b>Har oyda 26 soat</b> qimmatli vaqtingizni va asabingizni tejang!\n\n"
-        f"<i>Quyidagi tugmalar orqali xizmat bilan to'liq tanishing:</i> ⬇️"
+        f"<i>Quyidagi menyu orqali xizmat bilan to'liq tanishing:</i> ⬇️"
     )
 
 
@@ -229,9 +195,7 @@ def get_cabinet_text(user_id: int, user_first_name: str) -> str:
         cls = t.get("class", "Aniqlanmagan")
         cnt = t.get("students_count", 0)
         exp = t.get("expires_at", "—")
-        status = t.get("status", "active")
 
-        # Qolgan kunlarni hisoblash
         days_left_str = ""
         try:
             exp_date = datetime.strptime(exp, "%Y-%m-%d").date()
@@ -256,16 +220,24 @@ def get_cabinet_text(user_id: int, user_first_name: str) -> str:
             f"📊 <b>Tarif:</b> Sinf Rahbar\n"
             f"⚡ <b>Holati:</b> {status_icon}\n"
             f"📅 <b>Obuna tugash sanasi:</b> {exp} {days_left_str}\n\n"
-            f"<i>Hisobingiz bo'yicha hisobotlar dars yakunida avtomatik yuboriladi.</i>"
+            f"<i>Hisobingiz bo'yicha hisobotlar dars yakunida avtomatik yetkaziladi.</i>"
+        )
+    elif user_id == ROOT_ID:
+        return (
+            f"👑 <b>Hurmatli Bosh Administrator (Root)!</b>\n"
+            f"━━━━━━━━━━━━━━━━━━━━━\n"
+            f"Siz tizimning mutlaq boshqaruvchisisiz.\n\n"
+            f"Ustozlar ro'yxatini ko'rish uchun: /ustozlar\n"
+            f"Yangi ustoz qo'shish uchun: /qosh\n"
+            f"Xavfsizlik audit jurnali: /xavfsizlik_jurnali"
         )
     else:
         return (
-            f"👤 <b>Hurmatli {user_first_name}!</b>\n"
+            f"🔒 <b>KIRISH CHEKLANGAN!</b>\n"
             f"━━━━━━━━━━━━━━━━━━━━━\n"
-            f"Sizning hisobingiz hali tizimga ulanmagan.\n\n"
-            f"💡 <b>Ulanish uchun:</b>\n"
-            f"Administratorga murojaat qiling va o'z sinfingiz uchun xizmatni faollashtiring.\n\n"
-            f"📞 <b>Admin:</b> @{ADMIN_USERNAME}\n"
+            f"Assalomu alaykum, {user_first_name}!\n\n"
+            f"Ushbu bot faqat <b>AvtoEmaktab</b> xizmatiga rasman ulangan sinf rahbarlari uchun mo'ljallangan.\n\n"
+            f"Botdan foydalanish uchun <b>@{ADMIN_USERNAME}</b> profili bilan bog'laning.\n\n"
             f"🆔 <b>Sizning Telegram ID:</b> <code>{user_id}</code>"
         )
 
@@ -373,23 +345,16 @@ async def process_update(update_data: dict):
         user = update.effective_user
         user_id = user.id if user else 0
         name = user.first_name if user else "Hurmatli Ustoz"
+        uname_str = f"@{user.username}" if (user and user.username) else "Mavjud emas"
 
-        # AGAR BEGONA BO'LSA (Root ham emas, teachers.json da ham yo'q)
+        # 1. GATEKEEPER: AGAR BEGONA BO'LSA
         if not is_authorized_user(user_id):
             blocked_text = (
-                f"🔒 <b>KIRISH CHEKLANGAN!</b>
-"
-                f"━━━━━━━━━━━━━━━━━━━━━
-"
-                f"Assalomu alaykum, {name}!
-
-"
-                f"Ushbu bot faqat <b>AvtoEmaktab</b> xizmatiga rasman ulangan sinf rahbarlari uchun mo'ljallangan.
-
-"
-                f"Botdan foydalanish uchun <b>@{ADMIN_USERNAME}</b> profili bilan bog'laning.
-
-"
+                "🔒 <b>KIRISH CHEKLANGAN!</b>\n"
+                "━━━━━━━━━━━━━━━━━━━━━\n"
+                f"Assalomu alaykum, {name}!\n\n"
+                "Ushbu bot faqat <b>AvtoEmaktab</b> xizmatiga rasman ulangan sinf rahbarlari uchun mo'ljallangan.\n\n"
+                f"Botdan foydalanish uchun <b>@{ADMIN_USERNAME}</b> profili bilan bog'laning.\n\n"
                 f"🆔 <b>Sizning Telegram ID:</b> <code>{user_id}</code>"
             )
             keyboard = [
@@ -403,7 +368,7 @@ async def process_update(update_data: dict):
             await app.shutdown()
             return
 
-        # 1. /start yoki /sayt
+        # 2. /start yoki /sayt
         if text.startswith("/start") or text.startswith("/sayt"):
             await msg.reply_text(
                 text=get_welcome_text(name),
@@ -411,7 +376,7 @@ async def process_update(update_data: dict):
                 parse_mode=ParseMode.HTML
             )
 
-        # 2. /kabinet
+        # 3. /kabinet
         elif text.startswith("/kabinet"):
             await msg.reply_text(
                 text=get_cabinet_text(user_id, name),
@@ -419,7 +384,7 @@ async def process_update(update_data: dict):
                 parse_mode=ParseMode.HTML
             )
 
-        # 3. /tariflar
+        # 4. /tariflar
         elif text.startswith("/tariflar"):
             await msg.reply_text(
                 text=get_tariffs_text(),
@@ -427,7 +392,7 @@ async def process_update(update_data: dict):
                 parse_mode=ParseMode.HTML
             )
 
-        # 4. /xavfsizlik
+        # 5. /xavfsizlik
         elif text.startswith("/xavfsizlik"):
             await msg.reply_text(
                 text=get_security_text(),
@@ -435,7 +400,7 @@ async def process_update(update_data: dict):
                 parse_mode=ParseMode.HTML
             )
 
-        # 5. /status
+        # 6. /status
         elif text.startswith("/status"):
             await msg.reply_text(
                 text=get_status_text(),
@@ -443,7 +408,7 @@ async def process_update(update_data: dict):
                 parse_mode=ParseMode.HTML
             )
 
-        # 6. /admin
+        # 7. /admin
         elif text.startswith("/admin"):
             keyboard = [
                 [InlineKeyboardButton("💬 Adminga Yozish", url=f"https://t.me/{ADMIN_USERNAME}")],
@@ -455,64 +420,37 @@ async def process_update(update_data: dict):
                 parse_mode=ParseMode.HTML
             )
 
-        # ================= QAT'IY XAVFSIZLIK VA ADMIN BUYRUQLARI =================
-        elif any(text.startswith(cmd) for cmd in ["/qosh", "/uzaytir", "/ochir", "/ustozlar", "/admin_panel"]):
-            # Agar buyruqni yozgan odam ROOT bo'lmasa -> DARHOL BLOK VA ROOT GA ALERT!
+        # ================= QAT'IY XAVFSIZLIK VA ROOT ADMIN BUYRUQLARI =================
+        elif any(text.startswith(cmd) for cmd in ["/qosh", "/uzaytir", "/ochir", "/ustozlar", "/xavfsizlik_jurnali", "/audit"]):
             if user_id != ROOT_ID:
-                uname_str = f"@{user.username}" if (user and user.username) else "Mavjud emas"
-                now_str = datetime.now(zoneinfo.ZoneInfo("Asia/Tashkent")).strftime('%Y-%m-%d %H:%M:%S')
-                
-                # Haqiqiy xavfsizlik jurnaliga qayd etish
                 inc = record_security_incident(user_id, name, uname_str, text, "UNAUTHORIZED_ADMIN_COMMAND")
-
-                # Begona shaxsga rasmiy ogohlantirish
                 await msg.reply_text(
-                    f"⛔ <b>RUXSAT ETILMAGAN AMAL!</b>
-"
-                    f"Sizda administratorlik huquqi yo'q.
-
-"
-                    f"📌 <b>Qayd ID:</b> <code>#{inc['id']}</code>
-"
-                    f"⏱ <b>Qayd vaqti:</b> {inc['timestamp']}
-"
+                    f"⛔ <b>RUXSAT ETILMAGAN AMAL!</b>\n"
+                    f"Sizda administratorlik huquqi yo'q.\n\n"
+                    f"📌 <b>Qayd ID:</b> <code>#{inc['id']}</code>\n"
+                    f"⏱ <b>Qayd vaqti:</b> {inc['timestamp']}\n"
                     f"Xatti-harakatingiz va profilingiz xavfsizlik jurnaliga qonuniy dalil sifatida muhrlandi.",
                     parse_mode=ParseMode.HTML
                 )
-                
-                # ROOT ga xavfsizlik hisoboti
                 alert_text = (
-                    f"🚨 <b>XAVFSIZLIK OGOHLANTIRISHI!</b>
-"
-                    f"━━━━━━━━━━━━━━━━━━━━━
-"
-                    f"Begona foydalanuvchi admin buyrug'ini ishlatishga urindi:
-
-"
-                    f"👤 <b>Ism:</b> {name}
-"
-                    f"🆔 <b>Telegram ID:</b> <code>{user_id}</code>
-"
-                    f"💬 <b>Username:</b> {uname_str}
-"
-                    f"⌨️ <b>Yozgan buyrug'i:</b> <code>{text}</code>
-"
-                    f"⏱ <b>Vaqt:</b> {now_str}
-
-"
+                    f"🚨 <b>XAVFSIZLIK OGOHLANTIRISHI (#{inc['id']})!</b>\n"
+                    f"━━━━━━━━━━━━━━━━━━━━━\n"
+                    f"Begona foydalanuvchi admin buyrug'ini ishlatishga urindi:\n\n"
+                    f"👤 <b>Ism:</b> {name}\n"
+                    f"🆔 <b>Telegram ID:</b> <code>{user_id}</code>\n"
+                    f"💬 <b>Username:</b> {uname_str}\n"
+                    f"⌨️ <b>Yozgan buyrug'i:</b> <code>{text}</code>\n"
+                    f"⏱ <b>Vaqt:</b> {inc['timestamp']}\n\n"
                     f"🛑 <i>Tizim tomonidan avtomatik ravishda to'xtatildi.</i>"
                 )
                 try:
                     await app.bot.send_message(chat_id=ROOT_ID, text=alert_text, parse_mode=ParseMode.HTML)
                 except Exception as ex:
                     logger.error(f"Failed to alert root: {ex}")
-                
                 await app.shutdown()
                 return
 
-            # Agar bu haqiqiy ROOT bo'lsa:
-
-            # 7. /qosh <TG_ID> <Ism> <Sinf> <Oquvchilar_Soni> <Kun>
+            # ROOT BUYRUQLARI:
             if text.startswith("/qosh"):
                 parts = text.split()
                 if len(parts) >= 6:
@@ -539,7 +477,7 @@ async def process_update(update_data: dict):
                         "status": "active"
                     }
                     save_teachers_locally(teachers)
-                    sync_teachers_to_github(teachers)
+                    sync_file_to_github("teachers.json", teachers, f"feat(billing): add teacher {t_name} ({t_class})")
 
                     res_text = (
                         f"✅ <b>Yangi ustoz hisobi qo'shildi!</b>\n"
@@ -552,7 +490,6 @@ async def process_update(update_data: dict):
                     )
                     await msg.reply_text(res_text, parse_mode=ParseMode.HTML)
 
-                    # Ustozga avto xabar
                     try:
                         await app.bot.send_message(
                             chat_id=int(target_id),
@@ -567,7 +504,6 @@ async def process_update(update_data: dict):
                         )
                     except Exception as ex:
                         logger.warning(f"Could not notify teacher {target_id}: {ex}")
-
                 else:
                     help_qosh = (
                         "ℹ️ <b>Yangi hisob qo'shish formati:</b>\n"
@@ -577,7 +513,6 @@ async def process_update(update_data: dict):
                     )
                     await msg.reply_text(help_qosh, parse_mode=ParseMode.HTML)
 
-            # 8. /uzaytir <TG_ID> <Kun>
             elif text.startswith("/uzaytir"):
                 parts = text.split()
                 if len(parts) >= 3:
@@ -606,7 +541,7 @@ async def process_update(update_data: dict):
                         t["status"] = "active"
 
                         save_teachers_locally(teachers)
-                        sync_teachers_to_github(teachers)
+                        sync_file_to_github("teachers.json", teachers, f"feat(billing): extend teacher {target_id} by {days} days")
 
                         await msg.reply_text(
                             f"✅ <b>{t.get('name')} ustozning obunasi uzaytirildi!</b>\n"
@@ -618,36 +553,27 @@ async def process_update(update_data: dict):
                 else:
                     await msg.reply_text("Format: <code>/uzaytir &lt;TG_ID&gt; &lt;Kun&gt;</code>", parse_mode=ParseMode.HTML)
 
-            # Xavfsizlik jurnali komandasi
             elif text.startswith("/xavfsizlik_jurnali") or text.startswith("/audit"):
                 incidents = []
                 if os.path.exists(INCIDENTS_FILE):
                     try:
-                        with open(INCIDENTS_FILE, 'r', encoding='utf-8') as f:
+                        with open(INCIDENTS_FILE, "r", encoding="utf-8") as f:
                             incidents = json.load(f)
                     except Exception:
                         pass
                 if not incidents:
                     await msg.reply_text("🛡️ Xavfsizlik jurnali toza. Hech qanday shubhali holat qayd etilmagan.")
                 else:
-                    lines = [f"🛡️ <b>Xavfsizlik Jurnali ({len(incidents)} ta hodisa):</b>
-━━━━━━━━━━━━━━━━━━━━━"]
-                    # Oxirgi 10 ta hodisani chiqarish
+                    lines = [f"🛡️ <b>Xavfsizlik Jurnali ({len(incidents)} ta hodisa):</b>\n━━━━━━━━━━━━━━━━━━━━━"]
                     for item in incidents[-10:]:
                         lines.append(
-                            f"📌 <b>#{item.get('id')}</b> | ⏱ {item.get('timestamp')}
-"
-                            f"👤 {item.get('name')} ({item.get('username')})
-"
-                            f"🆔 ID: <code>{item.get('user_id')}</code>
-"
+                            f"📌 <b>#{item.get('id')}</b> | ⏱ {item.get('timestamp')}\n"
+                            f"👤 {item.get('name')} ({item.get('username')})\n"
+                            f"🆔 ID: <code>{item.get('user_id')}</code>\n"
                             f"⌨️ Buyruq: <code>{item.get('attempted_command')}</code>"
                         )
-                    await msg.reply_text("
+                    await msg.reply_text("\n\n".join(lines), parse_mode=ParseMode.HTML)
 
-".join(lines), parse_mode=ParseMode.HTML)
-
-            # 9. /ustozlar
             elif text.startswith("/ustozlar"):
                 teachers = load_teachers()
                 if not teachers:
@@ -662,7 +588,6 @@ async def process_update(update_data: dict):
                     lines.append("\n<i>Yangi qo'shish: /qosh | Uzaytirish: /uzaytir</i>")
                     await msg.reply_text("\n\n".join(lines), parse_mode=ParseMode.HTML)
 
-            # 10. /ochir <TG_ID>
             elif text.startswith("/ochir"):
                 parts = text.split()
                 if len(parts) >= 2:
@@ -671,7 +596,7 @@ async def process_update(update_data: dict):
                     if target_id in teachers:
                         removed = teachers.pop(target_id)
                         save_teachers_locally(teachers)
-                        sync_teachers_to_github(teachers)
+                        sync_file_to_github("teachers.json", teachers, f"chore(billing): remove teacher {target_id}")
                         await msg.reply_text(f"🗑️ <b>{removed.get('name')}</b> ro'yxatdan o'chirildi.", parse_mode=ParseMode.HTML)
                     else:
                         await msg.reply_text(f"❌ ID {target_id} topilmadi.")
@@ -682,6 +607,7 @@ async def process_update(update_data: dict):
         user = update.effective_user
         user_id = user.id if user else 0
         name = user.first_name if user else "Hurmatli Ustoz"
+        uname_str = f"@{user.username}" if (user and user.username) else "Mavjud emas"
 
         if not is_authorized_user(user_id):
             await query.answer("⛔ Botdan foydalanish uchun @Torabek_Abduvoitov bilan bog'laning!", show_alert=True)
@@ -739,17 +665,12 @@ async def process_update(update_data: dict):
             )
         elif data == "btn_admin_teachers":
             if user_id != ROOT_ID:
-                uname_str = f"@{user.username}" if (user and user.username) else "Mavjud emas"
-                now_str = datetime.now(zoneinfo.ZoneInfo("Asia/Tashkent")).strftime('%Y-%m-%d %H:%M:%S')
                 inc = record_security_incident(user_id, name, uname_str, f"callback:{data}", "CALLBACK_TAMPERING")
                 alert_text = (
-                    f"🚨 <b>XAVFSIZLIK: CALLBACK ATTACK (#{inc['id']})!</b>
-"
-                    f"Begona foydalanuvchi Admin Panel tugmasini simulyatsiya qilib bosishga urindi!
-"
-                    f"👤 Ism: {name} (ID: <code>{user_id}</code>, {uname_str})
-"
-                    f"⏱ Vaqt: {now_str}"
+                    f"🚨 <b>XAVFSIZLIK: CALLBACK ATTACK (#{inc['id']})!</b>\n"
+                    f"Begona foydalanuvchi Admin Panel tugmasini simulyatsiya qilib bosishga urindi!\n"
+                    f"👤 Ism: {name} (ID: <code>{user_id}</code>, {uname_str})\n"
+                    f"⏱ Vaqt: {inc['timestamp']}"
                 )
                 try:
                     await app.bot.send_message(chat_id=ROOT_ID, text=alert_text, parse_mode=ParseMode.HTML)
@@ -758,6 +679,7 @@ async def process_update(update_data: dict):
                 await query.answer("⛔ Ruxsat yo'q!", show_alert=True)
                 await app.shutdown()
                 return
+
             teachers = load_teachers()
             lines = ["📋 <b>Ulangan Ustozlar Ro'yxati:</b>\n━━━━━━━━━━━━━━━━━━━━━"]
             for uid, t in teachers.items():

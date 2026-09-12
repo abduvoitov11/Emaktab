@@ -686,6 +686,9 @@ async def run():
 
         logger.info(f"Bugungi ({day_names.get(weekday, '')}) navbatda {len(today_batch)} ta hisob bor.")
 
+    # Obunasi to'xtatilgan yoki muddati o'tgan sinflarni filtrlaymiz
+    today_batch = check_and_filter_active_classes(today_batch, bot)
+
     if not today_batch:
         logger.info("Bugun uchun hisoblar belgilanmagan.")
         return

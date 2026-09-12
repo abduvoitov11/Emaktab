@@ -860,11 +860,56 @@ class handler(BaseHTTPRequestHandler):
                     t["status"] = "paused"
                     save_teachers_locally(teachers)
                     sync_file_to_github("teachers.json", teachers, f"chore(billing): pause teacher {t_id}")
+                    try:
+                        loop = asyncio.new_event_loop()
+                        async def notify_pause():
+                            app = Application.builder().token(config.BOT_TOKEN).build()
+                            await app.initialize()
+                            pause_msg = (
+                                f"⏸️ <b>Hurmatli {t.get('name')} ustoz!</b>\n"
+                                "━━━━━━━━━━━━━━━━━━━━━\n"
+                                f"Sizning <b>{t.get('class')}</b> sinfingiz uchun AvtoEmaktab monitoring xizmati vaqtincha <b>to'xtatildi (muzlatildi)</b>.\n\n"
+                                "Xizmatni qayta faollashtirish uchun administrator bilan bog'laning:\n"
+                                f"@{ADMIN_USERNAME}"
+                            )
+                            await app.bot.send_message(
+                                chat_id=int(t_id),
+                                text=pause_msg,
+                                parse_mode=ParseMode.HTML
+                            )
+                            await app.shutdown()
+                        loop.run_until_complete(notify_pause())
+                        loop.close()
+                    except Exception as ex:
+                        logger.warning(f"Could not notify pause to {t_id}: {ex}")
 
                 elif sub_action == "resume":
                     t["status"] = "active"
                     save_teachers_locally(teachers)
                     sync_file_to_github("teachers.json", teachers, f"chore(billing): resume teacher {t_id}")
+                    try:
+                        loop = asyncio.new_event_loop()
+                        async def notify_resume():
+                            app = Application.builder().token(config.BOT_TOKEN).build()
+                            await app.initialize()
+                            resume_msg = (
+                                f"🟢 <b>Hurmatli {t.get('name')} ustoz!</b>\n"
+                                "━━━━━━━━━━━━━━━━━━━━━\n"
+                                f"Sizning <b>{t.get('class')}</b> sinfingiz uchun AvtoEmaktab monitoring xizmati <b>qayta faollashtirildi</b>!\n\n"
+                                f"📅 Amal qilish muddati: <b>{t.get('expires_at')}</b> gacha.\n"
+                                "Kunlik hisobotlar jadval bo'yicha yetkaziladi.\n\n"
+                                "Hisobingiz: /kabinet"
+                            )
+                            await app.bot.send_message(
+                                chat_id=int(t_id),
+                                text=resume_msg,
+                                parse_mode=ParseMode.HTML
+                            )
+                            await app.shutdown()
+                        loop.run_until_complete(notify_resume())
+                        loop.close()
+                    except Exception as ex:
+                        logger.warning(f"Could not notify resume to {t_id}: {ex}")
 
                 self.wfile.write(json.dumps({"ok": True}).encode())
                 return
@@ -925,9 +970,31 @@ class handler(BaseHTTPRequestHandler):
                 t_id = str(data.get("telegram_id")).strip()
                 teachers = load_teachers()
                 if t_id in teachers:
-                    teachers.pop(t_id)
+                    deleted_t = teachers.pop(t_id)
                     save_teachers_locally(teachers)
                     sync_file_to_github("teachers.json", teachers, f"chore(billing): delete teacher {t_id} from web")
+                    try:
+                        loop = asyncio.new_event_loop()
+                        async def notify_del():
+                            app = Application.builder().token(config.BOT_TOKEN).build()
+                            await app.initialize()
+                            del_msg = (
+                                f"🔴 <b>Hurmatli {deleted_t.get('name')} ustoz!</b>\n"
+                                "━━━━━━━━━━━━━━━━━━━━━\n"
+                                f"Sizning <b>{deleted_t.get('class')}</b> sinfingiz bo'yicha AvtoEmaktab xizmati obunasi yakunlandi va hisobingiz to'xtatildi.\n\n"
+                                "Biz bilan hamkorlik qilganingiz uchun tashakkur!\n"
+                                f"Qayta ulanish yoki savollar uchun: @{ADMIN_USERNAME}"
+                            )
+                            await app.bot.send_message(
+                                chat_id=int(t_id),
+                                text=del_msg,
+                                parse_mode=ParseMode.HTML
+                            )
+                            await app.shutdown()
+                        loop.run_until_complete(notify_del())
+                        loop.close()
+                    except Exception as ex:
+                        logger.warning(f"Could not notify delete to {t_id}: {ex}")
                     self.wfile.write(json.dumps({"ok": True}).encode())
                 else:
                     self.wfile.write(json.dumps({"ok": False, "error": "Ustoz topilmadi"}).encode())

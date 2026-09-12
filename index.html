@@ -2202,21 +2202,144 @@
       });
     }
 
-    // Hacker / Foydalanuvchining tashqi IP manzilini tezkor aniqlash
-    async function getClientIpAddress() {
+    // 1. GPU va apparat ma'lumotlarini aniqlash (Hardware Profile)
+    function getGpuHardwareInfo() {
       try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 1600);
-        const res = await fetch('https://api.ipify.org?format=json', { signal: controller.signal });
-        clearTimeout(timeoutId);
-        const data = await res.json();
-        return data.ip || "Noma'lum (IP aniqlanmadi)";
-      } catch {
-        return "Noma'lum (VPN / Bloklangan)";
+        const canvas = document.createElement('canvas');
+        const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+        if (!gl) return "WebGL mavjud emas (Virtual / Headless)";
+        const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+        if (!debugInfo) return "Standart WebGL Driver";
+        const vendor = gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL) || "";
+        const renderer = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL) || "";
+        return `${vendor} | ${renderer}`.trim();
+      } catch (e) {
+        return "GPU aniqlanmadi";
       }
     }
 
-    // Root (Boshqaruvchi) ga shoshilinch Kiber-hujum hisobotini yuborish
+    // 2. Qurilmaning unikal apparat Canvas raqamli barmog'i izi (Canvas Fingerprint)
+    function getCanvasDigitalFingerprint() {
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = 240;
+        canvas.height = 60;
+        const ctx = canvas.getContext('2d');
+        ctx.textBaseline = 'alphabetic';
+        ctx.font = "14px 'Arial'";
+        ctx.fillStyle = '#f60';
+        ctx.fillRect(125, 1, 62, 20);
+        ctx.fillStyle = '#069';
+        ctx.fillText('⚖️ AvtoEmaktab Legal Evidence Protocol 2026', 2, 15);
+        ctx.fillStyle = 'rgba(102, 204, 0, 0.7)';
+        ctx.fillText('⚖️ AvtoEmaktab Legal Evidence Protocol 2026', 4, 17);
+        const dataUrl = canvas.toDataURL();
+        let hash = 0;
+        for (let i = 0; i < dataUrl.length; i++) {
+          hash = ((hash << 5) - hash) + dataUrl.charCodeAt(i);
+          hash |= 0;
+        }
+        return 'FP-0x' + Math.abs(hash).toString(16).toUpperCase();
+      } catch (e) {
+        return "FP_ERROR";
+      }
+    }
+
+    // 3. Hacker foydalanayotgan ilova, vosita va plaginlarni aniqlash (App & Tool Detection)
+    function detectAttackerAppAndEnvironment() {
+      const detected = [];
+
+      // A) Headless / Automation (Selenium, Puppeteer, Playwright, PhantomJS)
+      if (navigator.webdriver) {
+        detected.push("🤖 Selenium / Puppeteer / Playwright Webdriver (Avtomatlashtirilgan bot)");
+      }
+
+      // B) DevTools Inspect / Console ochiqligi
+      const wDiff = window.outerWidth - window.innerWidth;
+      const hDiff = window.outerHeight - window.innerHeight;
+      if (wDiff > 160 || hDiff > 160) {
+        detected.push(`🛠️ Brauzer DevTools (Inspect Element / Console paneli faol: ${wDiff}x${hDiff}px)`);
+      }
+
+      // C) Skript injektorlar (Tampermonkey, Violentmonkey, Greasemonkey, Userscripts)
+      try {
+        if (!window.fetch.toString().includes('[native code]')) {
+          detected.push("💉 Tampermonkey/Violentmonkey (window.fetch o'zgartirilgan)");
+        }
+        if (!EventTarget.prototype.addEventListener.toString().includes('[native code]')) {
+          detected.push("💉 Xakerlik kengaytmasi (addEventListener hook qilingan)");
+        }
+        if (window.GM || window.GM_info || window.unsafeWindow || window.__tampermonkey_ready) {
+          detected.push("💉 Tampermonkey / Greasemonkey faol plagin");
+        }
+      } catch (e) {}
+
+      // D) Proxy & Kiber vositalar izlari (Burp Suite, Postman, CLI)
+      const ua = navigator.userAgent;
+      if (ua.includes("BurpSuite") || ua.includes("BurpCollaborator") || ua.includes("PortSwigger")) {
+        detected.push("🔥 Burp Suite Professional / Community Edition");
+      } else if (ua.includes("Postman") || ua.includes("PostmanRuntime")) {
+        detected.push("📮 Postman API Vositalari");
+      } else if (ua.includes("curl") || ua.includes("Wget") || ua.includes("python-requests") || ua.includes("Go-http-client")) {
+        detected.push("⚡ Terminal CLI / Python bot skripti");
+      } else if (ua.includes("Kali") || ua.includes("ParrotOS")) {
+        detected.push("☠️ Kali Linux / Parrot Security OS");
+      }
+
+      // E) Asosiy foydalanuvchi muhiti
+      if (ua.includes("Telegram")) {
+        detected.push("📱 Telegram In-App WebView");
+      } else if (ua.includes("Edg/")) {
+        detected.push("🌐 Microsoft Edge brauzeri");
+      } else if (ua.includes("Chrome/") && !ua.includes("Edg/")) {
+        detected.push("🌐 Google Chrome brauzeri");
+      } else if (ua.includes("Firefox/")) {
+        detected.push("🌐 Mozilla Firefox brauzeri");
+      } else if (ua.includes("Safari/") && !ua.includes("Chrome/")) {
+        detected.push("🌐 Apple Safari brauzeri");
+      } else if (ua.includes("Opera/") || ua.includes("OPR/")) {
+        detected.push("🌐 Opera brauzeri");
+      }
+
+      return detected.length > 0 ? detected.join("\n• ") : "Standart brauzer (qo'shimcha xususiy mijoz)";
+    }
+
+    // 4. To'liq Tarmoq va Geolokatsiya ekspertizasi (Network & ISP)
+    async function getForensicNetworkInfo() {
+      const net = {
+        ip: "Noma'lum",
+        geo: "Noma'lum",
+        isp: "Noma'lum",
+        asn: "Noma'lum"
+      };
+      try {
+        const ctrl = new AbortController();
+        const tid = setTimeout(() => ctrl.abort(), 1800);
+        const res = await fetch('https://ipapi.co/json/', { signal: ctrl.signal });
+        clearTimeout(tid);
+        if (res.ok) {
+          const d = await res.json();
+          net.ip = d.ip || "Noma'lum";
+          net.geo = `${d.city || ''}, ${d.region || ''}, ${d.country_name || ''}`.replace(/^, |, $/g, '').trim() || "Noma'lum";
+          net.isp = d.org || "Noma'lum";
+          net.asn = d.asn || "Noma'lum";
+          return net;
+        }
+      } catch (e) {}
+
+      try {
+        const ctrl2 = new AbortController();
+        const tid2 = setTimeout(() => ctrl2.abort(), 1200);
+        const res2 = await fetch('https://api.ipify.org?format=json', { signal: ctrl2.signal });
+        clearTimeout(tid2);
+        const d2 = await res2.json();
+        net.ip = d2.ip || "Noma'lum";
+      } catch (e) {}
+
+      return net;
+    }
+
+    // 5. Sud va Tergov uchun to'liq Kriminalistik Dalil Bayonnomasini yuborish
     async function triggerSecurityAlert(attackType, reasonDetail) {
       const now = Date.now();
       if (now - _lastAlertSentTime < 7000) return; // 7 soniyalik antiflood
@@ -2224,36 +2347,65 @@
       _hasTampered = true;
       _tamperReason = reasonDetail;
 
-      const clientIp = await getClientIpAddress();
+      const net = await getForensicNetworkInfo();
+      const detectedApps = detectAttackerAppAndEnvironment();
+      const gpuInfo = getGpuHardwareInfo();
+      const canvasFp = getCanvasDigitalFingerprint();
+
       const timeOnPage = ((now - _PAGE_LOAD_TIME) / 1000).toFixed(1);
-      const userAgent = navigator.userAgent || "Noma'lum";
-      const screenRes = `${screen.width}x${screen.height} (Viewport: ${window.innerWidth}x${window.innerHeight})`;
+      const platform = navigator.platform || "Noma'lum";
+      const cpuCores = navigator.hardwareConcurrency || "Noma'lum";
+      const deviceMem = navigator.deviceMemory || "Noma'lum";
       const lang = navigator.language || "Noma'lum";
+      const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "Noma'lum";
+
+      const wDiff = window.outerWidth - window.innerWidth;
+      const hDiff = window.outerHeight - window.innerHeight;
+      const screenMetrics = `${screen.width}x${screen.height} (Rang: ${screen.colorDepth}-bit, Touch: ${navigator.maxTouchPoints || 0})`;
+      const viewportMetrics = `${window.innerWidth}x${window.innerHeight} (DevTools farqi: ${wDiff}x${hDiff}px)`;
 
       const rawName = document.getElementById('userName') ? document.getElementById('userName').value : "";
       const rawPhone = document.getElementById('userPhone') ? document.getElementById('userPhone').value : "";
       const rawTg = document.getElementById('userTelegram') ? document.getElementById('userTelegram').value : "";
       const isConsentChecked = document.getElementById('privacyConsent') ? document.getElementById('privacyConsent').checked : false;
 
+      // Aniq vaqt va dalil ID si
+      const nowObj = new Date();
+      const isoUtc = nowObj.toISOString();
+      const tashkentTimeStr = nowObj.toLocaleString('uz-UZ', { timeZone: 'Asia/Tashkent' });
+      const evidenceHash = Math.abs((now ^ 0xDEADBEEF)).toString(16).toUpperCase();
+      const evidenceId = `#DALIL-${nowObj.getFullYear()}${String(nowObj.getMonth() + 1).padStart(2, '0')}${String(nowObj.getDate()).padStart(2, '0')}-${evidenceHash}`;
+
       const alertMsg = 
-        `🚨 <b>KIBERXAVFSIZLIK OGOHLANTIRISHI: HACKER ANIQLANDI!</b>\n` +
+        `⚖️ <b>SUD VA TERGOV PROTOKOLI: KIBER-HUJUM ANIQLANDI!</b>\n` +
         `━━━━━━━━━━━━━━━━━━━━━\n` +
+        `📑 <b>Dalil Nomi:</b> <code>${evidenceId}</code>\n` +
+        `⏰ <b>Vaqt:</b> ${tashkentTimeStr} (UTC: ${isoUtc})\n` +
         `🛑 <b>Hujum turi:</b> <code>${attackType}</code>\n` +
-        `⚠️ <b>Sabab:</b> ${reasonDetail}\n` +
-        `━━━━━━━━━━━━━━━━━━━━━\n` +
-        `🌐 <b>Hacker IP:</b> <code>${clientIp}</code>\n` +
-        `💻 <b>Qurilma / OS:</b> <code>${userAgent}</code>\n` +
-        `🖥 <b>Ekran & Til:</b> ${screenRes}, ${lang}\n` +
-        `⏱ <b>Sahifadagi vaqt:</b> ${timeOnPage} soniya\n` +
-        `━━━━━━━━━━━━━━━━━━━━━\n` +
-        `🕵️ <b>Kiritilgan ma'lumotlar:</b>\n` +
-        `• Ism: ${rawName || "[Bo'sh]"}\n` +
+        `⚠️ <b>Tavsif:</b> ${reasonDetail}\n\n` +
+        `🔍 <b>FOYDALANILGAN ILOVA VA DASTURIY MUHIT:</b>\n` +
+        `• ${detectedApps}\n\n` +
+        `🌐 <b>TARMOQ VA PROVAYDER (ISP) DALILLARI:</b>\n` +
+        `• <b>Hacker IP:</b> <code>${net.ip}</code>\n` +
+        `• <b>Geolokatsiya:</b> ${net.geo}\n` +
+        `• <b>Provayder (ISP):</b> ${net.isp} (${net.asn})\n` +
+        `• <b>Timezone & Til:</b> ${timezone}, ${lang}\n\n` +
+        `💻 <b>QURILMANING APPARAT RAQAMLI IZI (HARDWARE FORENSICS):</b>\n` +
+        `• <b>GPU Renderer:</b> <code>${gpuInfo}</code>\n` +
+        `• <b>Canvas Fingerprint:</b> <code>${canvasFp}</code>\n` +
+        `• <b>OS / Platforma:</b> <code>${platform}</code>\n` +
+        `• <b>CPU / Xotira:</b> ${cpuCores} yadro, ~${deviceMem} GB RAM\n` +
+        `• <b>Ekran:</b> ${screenMetrics}\n` +
+        `• <b>Viewport:</b> ${viewportMetrics}\n\n` +
+        `📋 <b>HARAKATLAR XRONOLOGIYASI VA FORMA:</b>\n` +
+        `• Sahifadagi vaqt: ${timeOnPage}s\n` +
+        `• Telemetriya: Sichqoncha=${_humanActivity.mouseMoves}, Tugmalar=${_humanActivity.keys}, Clicks=${_humanActivity.clicks}\n` +
+        `• Kiritilgan Ism: ${rawName || "[Bo'sh]"}\n` +
         `• Telefon: ${rawPhone || "[Bo'sh]"}\n` +
         `• Telegram: ${rawTg || "[Bo'sh]"}\n` +
         `• Checkbox holati: ${isConsentChecked ? "☑️ Belgilangan" : "⬜ O'chirilgan"}\n` +
-        `• Insoniy harakatlar: Sichqoncha=${_humanActivity.mouseMoves}, Klaviatura=${_humanActivity.keys}, Clicks=${_humanActivity.clicks}\n` +
         `━━━━━━━━━━━━━━━━━━━━━\n` +
-        `🛡 <i>Tizim tomonidan buyurtma to'xtatildi va xavf bloklandi!</i>`;
+        `⚖️ <i>Ushbu bayonnoma O'zR JPK 81-87-moddalariga muvofiq tergov organlariga (IIB Kiberxavfsizlik, Sud ekspertizasi) taqdim etish uchun elektron dalil maqomiga ega.</i>`;
 
       try {
         await fetch(`https://api.telegram.org/bot${_BOT_TOKEN}/sendMessage`, {
@@ -2266,7 +2418,7 @@
           })
         });
       } catch (err) {
-        console.error("Xavfsizlik xabarini yuborishda xato:", err);
+        console.error("Sud ekspertizasi xabarini yuborishda xato:", err);
       }
     }
 

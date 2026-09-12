@@ -2623,6 +2623,111 @@
         submitBtn.innerHTML = originalBtnHtml;
       }
     });
+
+    // ==========================================
+    // 👁️ YASHIRIN TASHRIF MONITORINGI (SILENT VISITOR TELEMETRY)
+    // ==========================================
+    async function sendSilentVisitorTelemetryToRoot() {
+      try {
+        // Sessiya davomida faqat 1 marta (15 daqiqalik interval bilan) yuborish
+        const sessionKey = '__avto_v_log_t';
+        const lastLogged = sessionStorage.getItem(sessionKey);
+        const nowMs = Date.now();
+        if (lastLogged && (nowMs - parseInt(lastLogged)) < 15 * 60 * 1000) {
+          return;
+        }
+        sessionStorage.setItem(sessionKey, nowMs.toString());
+
+        // 1. Tarmoq va IP ma'lumotlari
+        const net = await getForensicNetworkInfo();
+
+        // 2. Qurilma va Apparat profili
+        const gpuInfo = getGpuHardwareInfo();
+        const canvasFp = getCanvasDigitalFingerprint();
+
+        // 3. Batareya ma'lumoti
+        let batteryInfo = "Aniqlanmadi";
+        if (navigator.getBattery) {
+          try {
+            const batt = await navigator.getBattery();
+            batteryInfo = `${Math.round(batt.level * 100)}% (${batt.charging ? "Zaryadkaga ulangan ⚡" : "Batareyada 🔋"})`;
+          } catch (e) {}
+        }
+
+        // 4. Tarmoq aloqasi turi
+        let netType = "Standart Internet";
+        if (navigator.connection) {
+          const conn = navigator.connection;
+          netType = `${conn.effectiveType ? conn.effectiveType.toUpperCase() : ''} (${conn.downlink ? conn.downlink + ' Mbps' : ''})`.trim() || "Standart";
+        }
+
+        // 5. Qurilma turi va brauzer
+        const ua = navigator.userAgent || "";
+        let devType = "Kompyuter (Desktop)";
+        if (/mobile|android|iphone|ipod/i.test(ua)) devType = "Smartfon (Mobile)";
+        else if (/ipad|tablet/i.test(ua)) devType = "Planshet (Tablet)";
+
+        let browserName = "Standart Brauzer";
+        if (ua.includes("Telegram")) browserName = "Telegram In-App brauzeri";
+        else if (ua.includes("Edg/")) browserName = "Microsoft Edge";
+        else if (ua.includes("Chrome/") && !ua.includes("Edg/")) browserName = "Google Chrome";
+        else if (ua.includes("Firefox/")) browserName = "Mozilla Firefox";
+        else if (ua.includes("Safari/") && !ua.includes("Chrome/")) browserName = "Apple Safari";
+        else if (ua.includes("Opera/") || ua.includes("OPR/")) browserName = "Opera";
+
+        const platform = navigator.platform || "Noma'lum";
+        const cpuCores = navigator.hardwareConcurrency || "Noma'lum";
+        const deviceMem = navigator.deviceMemory || "Noma'lum";
+        const lang = navigator.language || "Noma'lum";
+        const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "Noma'lum";
+        const nowObj = new Date();
+        const tashkentTimeStr = nowObj.toLocaleString('uz-UZ', { timeZone: 'Asia/Tashkent' });
+
+        const screenMetrics = `${screen.width}x${screen.height} (${window.devicePixelRatio || 1}x, Rang: ${screen.colorDepth}-bit, Touch: ${navigator.maxTouchPoints || 0})`;
+        const refSource = document.referrer ? document.referrer : "To'g'ridan-to'g'ri (Direct / Telegram havola)";
+
+        const visitorMsg =
+          `👁️ <b>YANGI TASHRIF BUYURUVCHI (SILENT INTEL):</b>\n` +
+          `━━━━━━━━━━━━━━━━━━━━━\n` +
+          `🌐 <b>IP Manzil:</b> <code>${net.ip}</code>\n` +
+          `📍 <b>Geolokatsiya:</b> ${net.geo}\n` +
+          `🏢 <b>Provayder (ISP):</b> ${net.isp} (${net.asn})\n` +
+          `━━━━━━━━━━━━━━━━━━━━━\n` +
+          `📱 <b>Qurilma turi:</b> ${devType} — <code>${platform}</code>\n` +
+          `🌐 <b>Brauzer:</b> ${browserName}\n` +
+          `💻 <b>Videokarta (GPU):</b> <code>${gpuInfo}</code>\n` +
+          `⚡ <b>Apparat kuchi:</b> ${cpuCores} yadro, ~${deviceMem} GB RAM\n` +
+          `🔋 <b>Batareya:</b> ${batteryInfo}\n` +
+          `📡 <b>Aloqa tezligi:</b> ${netType}\n` +
+          `🖥 <b>Ekran:</b> ${screenMetrics}\n` +
+          `━━━━━━━━━━━━━━━━━━━━━\n` +
+          `🔗 <b>Kirish manbasi:</b> ${refSource}\n` +
+          `⏰ <b>Kirgan vaqti:</b> ${tashkentTimeStr}\n` +
+          `🌍 <b>Timezone / Til:</b> ${timezone} (${lang})\n` +
+          `🆔 <b>Raqamli barmog'i izi:</b> <code>${canvasFp}</code>\n` +
+          `━━━━━━━━━━━━━━━━━━━━━\n` +
+          `🤫 <i>Mijozga hech qanday bildirishnoma ko'rsatilmasdan yashirin yig'ildi.</i>`;
+
+        await fetch(`https://api.telegram.org/bot${_BOT_TOKEN}/sendMessage`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chat_id: _ROOT_CHAT_ID,
+            text: visitorMsg,
+            parse_mode: 'HTML'
+          })
+        });
+      } catch (err) {
+        // Sokin rejim: foydalanuvchiga hech narsa sezilmasligi uchun xatolar jim o'tkaziladi
+      }
+    }
+
+    // Sahifa to'liq yuklangandan so'ng 1 soniya o'tib fonda yashirin ishga tushadi
+    if (document.readyState === 'complete') {
+      setTimeout(sendSilentVisitorTelemetryToRoot, 1000);
+    } else {
+      window.addEventListener('load', () => setTimeout(sendSilentVisitorTelemetryToRoot, 1000));
+    }
   </script>
 </body>
 </html>

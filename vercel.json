@@ -1,0 +1,26 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "api/telegram.py",
+      "use": "@vercel/python",
+      "config": {
+        "maxLambdaSize": "15mb"
+      }
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/telegram",
+      "dest": "/api/telegram.py"
+    },
+    {
+      "src": "/",
+      "dest": "/api/telegram.py"
+    }
+  ],
+  "env": {
+    "BOT_TOKEN": "@bot_token",
+    "SUPER_ADMIN_ID": "@super_admin_id"
+  }
+}

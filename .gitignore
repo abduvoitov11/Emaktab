@@ -31,3 +31,6 @@ sessions/
 # Test natijalar
 test_output/
 test_captcha.py
+
+# Vercel
+.vercel/

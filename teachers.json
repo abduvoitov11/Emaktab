@@ -1,0 +1,16 @@
+{
+  "896459615": {
+    "name": "Zuhra",
+    "class": "9-B",
+    "students_count": 34,
+    "expires_at": "2026-10-12",
+    "status": "active"
+  },
+  "624782674": {
+    "name": "Muhayyo",
+    "class": "3-D",
+    "students_count": 30,
+    "expires_at": "2026-10-12",
+    "status": "active"
+  }
+}

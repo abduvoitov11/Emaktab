@@ -4,7 +4,8 @@ excel_base64.txt
 *.xls
 *.csv
 *.html
-
+*.py
+*.json
 media/
 screenshots/
 *.png

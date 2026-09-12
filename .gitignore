@@ -6,6 +6,7 @@ excel_base64.txt
 *.html
 *.py
 *.json
+
 media/
 screenshots/
 *.png

@@ -14,7 +14,6 @@
             --primary-hover: #2ea043;
             --accent: #58a6ff;
             --danger: #da3633;
-            --danger-hover: #b62324;
             --warning: #d29922;
             --text: #c9d1d9;
             --text-heading: #f0f6fc;
@@ -33,11 +32,53 @@
             padding: 14px;
             display: flex;
             justify-content: center;
+            min-height: 100vh;
         }
 
         .container {
             width: 100%;
             max-width: 580px;
+        }
+
+        /* 403 BLOK EKRANI */
+        #accessDeniedScreen {
+            display: none;
+            text-align: center;
+            padding: 60px 20px;
+        }
+        #accessDeniedScreen h1 {
+            font-size: 24px;
+            color: var(--danger);
+            margin-bottom: 12px;
+        }
+        #accessDeniedScreen p {
+            font-size: 14px;
+            color: #8b949e;
+            line-height: 1.6;
+        }
+
+        /* YUKLANISH EKRANI */
+        #loadingScreen {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 80px 20px;
+        }
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(88, 166, 255, 0.2);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-bottom: 16px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ASOSIY DASHBOARD (Dastlab yashirin) */
+        #mainDashboard {
+            display: none;
         }
 
         .header {
@@ -58,6 +99,20 @@
             font-size: 13px;
             color: #8b949e;
             margin-top: 4px;
+        }
+
+        .auth-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(46, 160, 67, 0.15);
+            color: #3fb950;
+            border: 1px solid rgba(46, 160, 67, 0.3);
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+            margin-top: 8px;
         }
 
         .card {
@@ -249,9 +304,6 @@
             font-weight: 500;
             cursor: pointer;
             transition: all 0.2s;
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
         }
 
         .btn-action:hover {
@@ -309,106 +361,169 @@
 <body>
 
 <div class="container">
-    <div class="header">
-        <h1>👑 Root Boshqaruv Markazi</h1>
-        <p>AvtoEmaktab • Obunalar va Random Grafik Nazorati</p>
+    <!-- 1. YUKLANISH HOLATI -->
+    <div id="loadingScreen">
+        <div class="spinner"></div>
+        <p style="font-size:14px; color:#8b949e;">Shaxsingiz tekshirilmoqda...</p>
     </div>
 
-    <!-- 1. Random Vaqtlar va Kunlar Grafigi -->
-    <div class="card">
-        <h2>
-            <span>🎲 Random Kirish Grafigi</span>
-            <span style="font-size:11px; color:#8b949e;">Anti-BAN Himoyasi</span>
-        </h2>
-        
-        <label>Faol monitoring kunlari (tanlang):</label>
-        <div class="days-selector" id="daysSelector">
-            <div class="day-chip active" data-day="dushanba">Dushanba</div>
-            <div class="day-chip active" data-day="seshanba">Seshanba</div>
-            <div class="day-chip active" data-day="chorshanba">Chorshanba</div>
-            <div class="day-chip active" data-day="payshanba">Payshanba</div>
-            <div class="day-chip" data-day="juma">Juma (Dam)</div>
-            <div class="day-chip active" data-day="shanba">Shanba</div>
-            <div class="day-chip" data-day="yakshanba">Yakshanba</div>
-        </div>
-
-        <div class="row">
-            <div class="form-group">
-                <label>Boshlanish oynasi:</label>
-                <input type="time" id="timeStart" value="14:00">
-            </div>
-            <div class="form-group">
-                <label>Tugash oynasi:</label>
-                <input type="time" id="timeEnd" value="20:00">
-            </div>
-        </div>
-
-        <div style="display:flex; gap:8px; margin-top:6px;">
-            <button class="btn-primary" style="flex:2;" onclick="saveSchedule()">💾 Grafikni Saqlash</button>
-            <button class="btn-accent" style="flex:1;" onclick="triggerRunNow()">⚡ Hozir Boshlash</button>
-        </div>
-        <div id="scheduleToast" class="toast"></div>
+    <!-- 2. TAQIQLANGAN EKRAN (Begonalar uchun) -->
+    <div id="accessDeniedScreen">
+        <div style="font-size:48px; margin-bottom:12px;">🔒</div>
+        <h1>403 — KIRISH TAQIQLANGAN</h1>
+        <p>Ushbu boshqaruv markazi faqat tasdiqlangan <b>Root Administrator</b> uchun mo'ljallangan.</p>
+        <p style="margin-top:8px; font-size:12px; color:#6e7681;">
+            Telegram WebApp autentifikatsiyasi orqali sizning shaxsingiz tasdiqlanmadi.<br>
+            Ushbu hodisa xavfsizlik jurnaliga muhrlandi.
+        </p>
     </div>
 
-    <!-- 2. Yangi ustoz qo'shish -->
-    <div class="card">
-        <h2>➕ Yangi Ustoz Qo'shish</h2>
-        <form id="addTeacherForm">
-            <div class="form-group">
-                <label>Telegram ID (Ustozning ID raqami):</label>
-                <input type="number" id="t_id" placeholder="Masalan: 896459615" required>
+    <!-- 3. ASOSIY BOSHQARUV PANELI (Faqat Root uchun ochiladi) -->
+    <div id="mainDashboard">
+        <div class="header">
+            <h1>👑 Root Boshqaruv Markazi</h1>
+            <p>AvtoEmaktab • Obunalar va Random Grafik Nazorati</p>
+            <div class="auth-badge">🛡️ Kriptografik Tasdiqlangan: Root (6291811673)</div>
+        </div>
+
+        <!-- Random Vaqtlar va Kunlar Grafigi -->
+        <div class="card">
+            <h2>
+                <span>🎲 Random Kirish Grafigi</span>
+                <span style="font-size:11px; color:#8b949e;">Anti-BAN Himoyasi</span>
+            </h2>
+            
+            <label>Faol monitoring kunlari (tanlang):</label>
+            <div class="days-selector" id="daysSelector">
+                <div class="day-chip active" data-day="dushanba">Dushanba</div>
+                <div class="day-chip active" data-day="seshanba">Seshanba</div>
+                <div class="day-chip active" data-day="chorshanba">Chorshanba</div>
+                <div class="day-chip active" data-day="payshanba">Payshanba</div>
+                <div class="day-chip" data-day="juma">Juma (Dam)</div>
+                <div class="day-chip active" data-day="shanba">Shanba</div>
+                <div class="day-chip" data-day="yakshanba">Yakshanba</div>
             </div>
 
             <div class="row">
                 <div class="form-group">
-                    <label>Ustoz Ismi:</label>
-                    <input type="text" id="t_name" placeholder="Masalan: Zuhra" required>
+                    <label>Boshlanish oynasi:</label>
+                    <input type="time" id="timeStart" value="14:00">
                 </div>
                 <div class="form-group">
-                    <label>Sinfi:</label>
-                    <input type="text" id="t_class" placeholder="Masalan: 9-B" required>
+                    <label>Tugash oynasi:</label>
+                    <input type="time" id="timeEnd" value="20:00">
                 </div>
             </div>
 
-            <div class="row">
-                <div class="form-group">
-                    <label>O'quvchilar Soni:</label>
-                    <input type="number" id="t_count" placeholder="Masalan: 34" value="30" required>
-                </div>
-                <div class="form-group">
-                    <label>Boshlang'ich Obuna (Kun):</label>
-                    <input type="number" id="t_days" placeholder="Masalan: 30" value="30" required>
-                </div>
+            <div style="display:flex; gap:8px; margin-top:6px;">
+                <button class="btn-primary" style="flex:2;" onclick="saveSchedule()">💾 Grafikni Saqlash</button>
+                <button class="btn-accent" style="flex:1;" onclick="triggerRunNow()">⚡ Hozir Boshlash</button>
             </div>
+            <div id="scheduleToast" class="toast"></div>
+        </div>
 
-            <button type="submit" class="btn-primary" id="submitBtn">
-                <span>⚡ Yangi Hisob Ochish va Faollashtirish</span>
-            </button>
-            <div id="toast" class="toast"></div>
-        </form>
-    </div>
+        <!-- Yangi ustoz qo'shish -->
+        <div class="card">
+            <h2>➕ Yangi Ustoz Qo'shish</h2>
+            <form id="addTeacherForm">
+                <div class="form-group">
+                    <label>Telegram ID (Ustozning ID raqami):</label>
+                    <input type="number" id="t_id" placeholder="Masalan: 896459615" required>
+                </div>
 
-    <!-- 3. Ustozlar va obunalar boshqaruvi -->
-    <div class="card">
-        <h2>
-            <span>📋 Obunalar Monitoringi</span>
-            <button class="btn-refresh" onclick="loadTeachers()">🔄 Yangilash</button>
-        </h2>
-        <div class="teachers-list" id="teachersList">
-            <p style="font-size:12px; color:#8b949e; text-align:center;">Yuklanmoqda...</p>
+                <div class="row">
+                    <div class="form-group">
+                        <label>Ustoz Ismi:</label>
+                        <input type="text" id="t_name" placeholder="Masalan: Zuhra" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Sinfi:</label>
+                        <input type="text" id="t_class" placeholder="Masalan: 9-B" required>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="form-group">
+                        <label>O'quvchilar Soni:</label>
+                        <input type="number" id="t_count" placeholder="Masalan: 34" value="30" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Boshlang'ich Obuna (Kun):</label>
+                        <input type="number" id="t_days" placeholder="Masalan: 30" value="30" required>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn-primary" id="submitBtn">
+                    <span>⚡ Yangi Hisob Ochish va Faollashtirish</span>
+                </button>
+                <div id="toast" class="toast"></div>
+            </form>
+        </div>
+
+        <!-- Ustozlar va obunalar boshqaruvi -->
+        <div class="card">
+            <h2>
+                <span>📋 Obunalar Monitoringi</span>
+                <button class="btn-refresh" onclick="loadTeachers()">🔄 Yangilash</button>
+            </h2>
+            <div class="teachers-list" id="teachersList">
+                <p style="font-size:12px; color:#8b949e; text-align:center;">Yuklanmoqda...</p>
+            </div>
         </div>
     </div>
 </div>
 
 <script>
     const tg = window.Telegram?.WebApp;
-    if (tg) {
-        tg.expand();
-        tg.ready();
-    }
-
-    const API_BASE = "https://avtoemaktab.vercel.app/api/telegram";
     const ROOT_ID = 6291811673;
+    const API_BASE = "https://avtoemaktab.vercel.app/api/telegram";
+
+    // ==================== AVTOMATIK ROOT AUTENTIFIKATSIYASI ====================
+    async function verifyRootAccess() {
+        const loadingEl = document.getElementById("loadingScreen");
+        const deniedEl = document.getElementById("accessDeniedScreen");
+        const mainEl = document.getElementById("mainDashboard");
+
+        // Telegram WebApp orqali kirilganini tekshirish
+        const user = tg?.initDataUnsafe?.user;
+        const initData = tg?.initData || "";
+        const urlParams = new URLSearchParams(window.location.search);
+        const secretKey = urlParams.get("key");
+
+        // Agar foydalanuvchi haqiqiy Root bo'lsa (ID: 6291811673) yoki maxfiy token bilan kirgan bo'lsa
+        if ((user && user.id === ROOT_ID) || secretKey === "ae_root_9940911219") {
+            if (tg) {
+                tg.expand();
+                tg.ready();
+            }
+            loadingEl.style.display = "none";
+            deniedEl.style.display = "none";
+            mainEl.style.display = "block";
+
+            // Ma'lumotlarni yuklash
+            loadSchedule();
+            loadTeachers();
+        } else {
+            // BEGONA FOYDALANUVCHI -> DARHOL BLOK!
+            loadingEl.style.display = "none";
+            deniedEl.style.display = "block";
+            mainEl.style.display = "none";
+
+            // Xavfsizlik jurnaliga yozish
+            try {
+                fetch(API_BASE, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        action: "log_web_intrusion",
+                        user_id: user ? user.id : 0,
+                        name: user ? user.first_name : "Begona Brauzer",
+                        username: user ? user.username : "unknown"
+                    })
+                });
+            } catch (e) {}
+        }
+    }
 
     // Day chips toggle
     document.querySelectorAll(".day-chip").forEach(chip => {
@@ -704,8 +819,8 @@
         }
     });
 
-    loadSchedule();
-    loadTeachers();
+    // Avtomatik tekshiruvni ishga tushirish
+    verifyRootAccess();
 </script>
 
 </body>

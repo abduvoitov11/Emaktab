@@ -757,6 +757,47 @@ class handler(BaseHTTPRequestHandler):
             body = self.rfile.read(content_length)
             data = json.loads(body.decode("utf-8"))
 
+            # Veb admin panelga begona shaxs kirishga uringanda
+            if data.get("action") == "log_web_intrusion":
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.end_headers()
+
+                intruder_id = int(data.get("user_id", 0))
+                intruder_name = str(data.get("name", "Noma'lum"))
+                intruder_user = str(data.get("username", "unknown"))
+
+                inc = record_security_incident(intruder_id, intruder_name, intruder_user, "WEB_ADMIN_UNAUTHORIZED_OPEN", "WEB_INTRUSION")
+                try:
+                    loop = asyncio.new_event_loop()
+                    async def alert_intruder():
+                        app = Application.builder().token(config.BOT_TOKEN).build()
+                        await app.initialize()
+                        alert_msg = (
+                            "🚨 <b>XAVFSIZLIK: SAYTGA RUXSATSIZ KIRISH!</b>\n"
+                            "━━━━━━━━━━━━━━━━━━━━━\n"
+                            "Begona shaxs admin.html sahifasini ochishga urindi!\n\n"
+                            f"👤 <b>Ism:</b> {intruder_name}\n"
+                            f"🆔 <b>ID:</b> <code>{intruder_id}</code>\n"
+                            f"💬 <b>Username:</b> @{intruder_user}\n"
+                            f"📌 <b>Qayd:</b> #{inc['id']}\n\n"
+                            "🛑 <i>Tizim tomonidan 403 Forbidden berilib, darhol bloklandi.</i>"
+                        )
+                        await app.bot.send_message(
+                            chat_id=ROOT_ID,
+                            text=alert_msg,
+                            parse_mode=ParseMode.HTML
+                        )
+                        await app.shutdown()
+                    loop.run_until_complete(alert_intruder())
+                    loop.close()
+                except Exception:
+                    pass
+
+                self.wfile.write(json.dumps({"ok": True}).encode())
+                return
+
             # Agar saytdan yangi ustoz qo'shish so'rovi kelsa
             if data.get("action") == "add_teacher":
                 self.send_response(200)

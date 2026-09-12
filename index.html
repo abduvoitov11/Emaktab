@@ -1704,13 +1704,18 @@
           <textarea id="userComment" class="form-input" placeholder="Sinfingiz yoki maktabingiz haqida qisqacha ma'lumot..."></textarea>
         </div>
 
+        <div class="form-group" style="margin-top: 6px; margin-bottom: 22px;">
+          <label style="display: flex; align-items: flex-start; gap: 12px; cursor: pointer; font-size: 12.5px; line-height: 1.55; color: var(--text-body); background: var(--calc-box-bg); padding: 12px 16px; border-radius: var(--radius-sm); border: 1px solid var(--card-border);">
+            <input type="checkbox" id="privacyConsent" required checked style="margin-top: 3px; accent-color: var(--primary); width: 18px; height: 18px; cursor: pointer; flex-shrink: 0;">
+            <span>
+              O'zbekiston Respublikasining «Shaxsga doir ma'lumotlar to'g'risida»gi Qonuniga muvofiq, ma'lumotlarim buyurtmani rasmiylashtirish va aloqa o'rnatish maqsadida qayta ishlanishiga rozilik bildiraman. Shaxsiy ma'lumotlar uchinchi shaxslarga berilmaydi.
+            </span>
+          </label>
+        </div>
+
         <button type="submit" id="orderSubmitBtn" class="btn-main" style="width: 100%; justify-content: center; font-size: 17px;">
           <i class="fa-solid fa-paper-plane"></i> Buyurtma Yuborish
         </button>
-
-        <p style="font-size: 12px; color: var(--text-body); opacity: 0.8; text-align: center; margin-top: 12px; line-height: 1.5;">
-          <i class="fa-solid fa-shield-halved" style="color: var(--primary);"></i> Tugmani bosish orqali O'zbekiston Respublikasining «Shaxsga doir ma'lumotlar to'g'risida»gi Qonuniga muvofiq, ma'lumotlaringiz buyurtmani rasmiylashtirish va aloqa o'rnatish maqsadida qayta ishlanishiga rozilik bildirasiz. Shaxsiy ma'lumotlar uchinchi shaxslarga berilmaydi.
-        </p>
       </form>
 
       <div style="text-align: center; margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--card-border);">
@@ -2166,6 +2171,12 @@
       const telegram = document.getElementById('userTelegram').value.trim();
       const plan = document.getElementById('planSelect').value;
       const comment = document.getElementById('userComment').value.trim();
+      const consentBox = document.getElementById('privacyConsent');
+
+      if (consentBox && !consentBox.checked) {
+        alert("Iltimos, shaxsga doir ma'lumotlarni qayta ishlash shartlariga rozilik bildiring.");
+        return;
+      }
 
       let serviceName = "Sinf Rahbar";
       let quantity = "30 ta o'quvchi";
@@ -2183,7 +2194,7 @@
         price = "Kelishilgan narxda";
       } else if (plan.includes('Butun Maktab')) {
         serviceName = "Butun Maktab";
-        quantity = "Barcha sinflar va o'quvchilar";
+        quantity = "30 tagacha sinflar va ota-onalar";
         price = "240$ / oyiga";
       }
 

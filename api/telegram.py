@@ -360,8 +360,52 @@ async def process_update(update_data: dict):
                 parse_mode=ParseMode.HTML
             )
 
-        # ================= ROOT ADMIN KOMANDALARI =================
-        elif user_id == ROOT_ID:
+        # ================= QAT'IY XAVFSIZLIK VA ADMIN BUYRUQLARI =================
+        elif any(text.startswith(cmd) for cmd in ["/qosh", "/uzaytir", "/ochir", "/ustozlar", "/admin_panel"]):
+            # Agar buyruqni yozgan odam ROOT bo'lmasa -> DARHOL BLOK VA ROOT GA ALERT!
+            if user_id != ROOT_ID:
+                uname_str = f"@{user.username}" if (user and user.username) else "Mavjud emas"
+                now_str = datetime.now(zoneinfo.ZoneInfo("Asia/Tashkent")).strftime('%Y-%m-%d %H:%M:%S')
+                
+                # Begona shaxsga ogohlantirish
+                await msg.reply_text(
+                    "⛔ <b>RUXSAT ETILMAGAN AMAL!</b>
+"
+                    "Sizda administratorlik huquqi yo'q. Ushbu xatti-harakat va sizning ma'lumotlaringiz xavfsizlik jurnaliga qayd etildi.",
+                    parse_mode=ParseMode.HTML
+                )
+                
+                # ROOT ga xavfsizlik hisoboti
+                alert_text = (
+                    f"🚨 <b>XAVFSIZLIK OGOHLANTIRISHI!</b>
+"
+                    f"━━━━━━━━━━━━━━━━━━━━━
+"
+                    f"Begona foydalanuvchi admin buyrug'ini ishlatishga urindi:
+
+"
+                    f"👤 <b>Ism:</b> {name}
+"
+                    f"🆔 <b>Telegram ID:</b> <code>{user_id}</code>
+"
+                    f"💬 <b>Username:</b> {uname_str}
+"
+                    f"⌨️ <b>Yozgan buyrug'i:</b> <code>{text}</code>
+"
+                    f"⏱ <b>Vaqt:</b> {now_str}
+
+"
+                    f"🛑 <i>Tizim tomonidan avtomatik ravishda to'xtatildi.</i>"
+                )
+                try:
+                    await app.bot.send_message(chat_id=ROOT_ID, text=alert_text, parse_mode=ParseMode.HTML)
+                except Exception as ex:
+                    logger.error(f"Failed to alert root: {ex}")
+                
+                await app.shutdown()
+                return
+
+            # Agar bu haqiqiy ROOT bo'lsa:
 
             # 7. /qosh <TG_ID> <Ism> <Sinf> <Oquvchilar_Soni> <Kun>
             if text.startswith("/qosh"):
@@ -553,7 +597,26 @@ async def process_update(update_data: dict):
                 reply_markup=InlineKeyboardMarkup(keyboard),
                 parse_mode=ParseMode.HTML
             )
-        elif data == "btn_admin_teachers" and user_id == ROOT_ID:
+        elif data == "btn_admin_teachers":
+            if user_id != ROOT_ID:
+                uname_str = f"@{user.username}" if (user and user.username) else "Mavjud emas"
+                now_str = datetime.now(zoneinfo.ZoneInfo("Asia/Tashkent")).strftime('%Y-%m-%d %H:%M:%S')
+                alert_text = (
+                    f"🚨 <b>XAVFSIZLIK: CALLBACK ATTACK!</b>
+"
+                    f"Begona foydalanuvchi Admin Panel tugmasini simulyatsiya qilib bosishga urindi!
+"
+                    f"👤 Ism: {name} (ID: <code>{user_id}</code>, {uname_str})
+"
+                    f"⏱ Vaqt: {now_str}"
+                )
+                try:
+                    await app.bot.send_message(chat_id=ROOT_ID, text=alert_text, parse_mode=ParseMode.HTML)
+                except Exception:
+                    pass
+                await query.answer("⛔ Ruxsat yo'q!", show_alert=True)
+                await app.shutdown()
+                return
             teachers = load_teachers()
             lines = ["📋 <b>Ulangan Ustozlar Ro'yxati:</b>\n━━━━━━━━━━━━━━━━━━━━━"]
             for uid, t in teachers.items():

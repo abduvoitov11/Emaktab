@@ -14,6 +14,8 @@
             --primary-hover: #2ea043;
             --accent: #58a6ff;
             --danger: #da3633;
+            --danger-hover: #b62324;
+            --warning: #d29922;
             --text: #c9d1d9;
             --text-heading: #f0f6fc;
         }
@@ -28,23 +30,23 @@
         body {
             background-color: var(--bg-color);
             color: var(--text);
-            padding: 16px;
+            padding: 14px;
             display: flex;
             justify-content: center;
         }
 
         .container {
             width: 100%;
-            max-width: 540px;
+            max-width: 580px;
         }
 
         .header {
             text-align: center;
-            padding: 20px 0 10px;
+            padding: 16px 0 10px;
         }
 
         .header h1 {
-            font-size: 22px;
+            font-size: 20px;
             color: var(--text-heading);
             display: flex;
             align-items: center;
@@ -62,46 +64,46 @@
             background: var(--card-bg);
             border: 1px solid var(--border-color);
             border-radius: 12px;
-            padding: 18px;
-            margin-top: 16px;
+            padding: 16px;
+            margin-top: 14px;
             backdrop-filter: blur(10px);
             box-shadow: 0 8px 24px rgba(0,0,0,0.3);
         }
 
         .card h2 {
-            font-size: 16px;
+            font-size: 15px;
             color: var(--text-heading);
-            margin-bottom: 14px;
+            margin-bottom: 12px;
             display: flex;
             align-items: center;
-            gap: 8px;
+            justify-content: space-between;
         }
 
         .form-group {
-            margin-bottom: 12px;
+            margin-bottom: 10px;
         }
 
         label {
             display: block;
             font-size: 12px;
             color: #8b949e;
-            margin-bottom: 6px;
+            margin-bottom: 4px;
             font-weight: 500;
         }
 
-        input, select {
+        input {
             width: 100%;
-            padding: 10px 12px;
+            padding: 9px 11px;
             background: #090d13;
             border: 1px solid var(--border-color);
             border-radius: 8px;
             color: var(--text-heading);
-            font-size: 14px;
+            font-size: 13px;
             outline: none;
             transition: border-color 0.2s;
         }
 
-        input:focus, select:focus {
+        input:focus {
             border-color: var(--accent);
         }
 
@@ -119,17 +121,13 @@
             background: var(--primary);
             color: #fff;
             border: none;
-            padding: 12px;
+            padding: 11px;
             border-radius: 8px;
-            font-size: 15px;
+            font-size: 14px;
             font-weight: 600;
             cursor: pointer;
             transition: background 0.2s;
-            margin-top: 6px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 6px;
+            margin-top: 4px;
         }
 
         button.btn-primary:hover {
@@ -137,24 +135,30 @@
         }
 
         .teachers-list {
-            margin-top: 10px;
+            margin-top: 8px;
             display: flex;
             flex-direction: column;
-            gap: 10px;
+            gap: 12px;
         }
 
         .teacher-item {
             background: #090d13;
             border: 1px solid var(--border-color);
-            border-radius: 8px;
-            padding: 12px;
+            border-radius: 10px;
+            padding: 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .t-header {
             display: flex;
             justify-content: space-between;
-            align-items: center;
+            align-items: flex-start;
         }
 
         .t-info h3 {
-            font-size: 14px;
+            font-size: 15px;
             color: var(--text-heading);
         }
 
@@ -165,19 +169,90 @@
         }
 
         .t-badge {
-            background: rgba(46, 160, 67, 0.15);
-            color: #3fb950;
             padding: 3px 8px;
             border-radius: 20px;
             font-size: 11px;
             font-weight: 600;
         }
 
+        .badge-active {
+            background: rgba(46, 160, 67, 0.15);
+            color: #3fb950;
+        }
+
+        .badge-paused {
+            background: rgba(210, 153, 34, 0.15);
+            color: #d29922;
+        }
+
+        .badge-expired {
+            background: rgba(218, 54, 51, 0.15);
+            color: #f85149;
+        }
+
+        /* Action Buttons */
+        .t-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            padding-top: 8px;
+            border-top: 1px solid rgba(48, 54, 61, 0.5);
+        }
+
+        .btn-action {
+            background: #21262d;
+            border: 1px solid var(--border-color);
+            color: #c9d1d9;
+            padding: 6px 10px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .btn-action:hover {
+            background: #30363d;
+            color: #fff;
+        }
+
+        .btn-action.extend {
+            border-color: rgba(46, 160, 67, 0.4);
+            color: #3fb950;
+        }
+        .btn-action.extend:hover {
+            background: rgba(46, 160, 67, 0.15);
+        }
+
+        .btn-action.pause {
+            border-color: rgba(210, 153, 34, 0.4);
+            color: #d29922;
+        }
+
+        .btn-action.delete {
+            border-color: rgba(218, 54, 51, 0.4);
+            color: #f85149;
+        }
+        .btn-action.delete:hover {
+            background: rgba(218, 54, 51, 0.15);
+        }
+
+        .btn-refresh {
+            background: none;
+            border: none;
+            color: var(--accent);
+            font-size: 12px;
+            cursor: pointer;
+        }
+
         .toast {
             display: none;
             padding: 10px 14px;
             border-radius: 8px;
-            margin-top: 12px;
+            margin-top: 10px;
             font-size: 13px;
             text-align: center;
         }
@@ -201,10 +276,11 @@
 
 <div class="container">
     <div class="header">
-        <h1>👑 Root Boshqaruv Paneli</h1>
-        <p>AvtoEmaktab • Ustozlar Hisobini Qo'shish va Nazorat</p>
+        <h1>👑 Root Boshqaruv Markazi</h1>
+        <p>AvtoEmaktab • Obunalar va Ustozlarni To'liq Nazorat Qilish</p>
     </div>
 
+    <!-- 1. Yangi ustoz qo'shish -->
     <div class="card">
         <h2>➕ Yangi Ustoz Qo'shish</h2>
         <form id="addTeacherForm">
@@ -230,20 +306,24 @@
                     <input type="number" id="t_count" placeholder="Masalan: 34" value="30" required>
                 </div>
                 <div class="form-group">
-                    <label>Obuna Muddati (Kun):</label>
+                    <label>Boshlang'ich Obuna (Kun):</label>
                     <input type="number" id="t_days" placeholder="Masalan: 30" value="30" required>
                 </div>
             </div>
 
             <button type="submit" class="btn-primary" id="submitBtn">
-                <span>⚡ Tizimga Qo'shish va Faollashtirish</span>
+                <span>⚡ Yangi Hisob Ochish va Faollashtirish</span>
             </button>
             <div id="toast" class="toast"></div>
         </form>
     </div>
 
+    <!-- 2. Ustozlar va obunalar boshqaruvi -->
     <div class="card">
-        <h2>📋 Ulangan Ustozlar Ro'yxati</h2>
+        <h2>
+            <span>📋 Obunalar Monitoringi</span>
+            <button class="btn-refresh" onclick="loadTeachers()">🔄 Yangilash</button>
+        </h2>
         <div class="teachers-list" id="teachersList">
             <p style="font-size:12px; color:#8b949e; text-align:center;">Yuklanmoqda...</p>
         </div>
@@ -257,36 +337,156 @@
         tg.ready();
     }
 
-    // URL parametrlari yoki tg dan root tokenni olish
     const API_BASE = "https://avtoemaktab.vercel.app/api/telegram";
+    const ROOT_ID = 6291811673;
+
+    function getDaysDiff(dateStr) {
+        try {
+            const exp = new Date(dateStr);
+            const now = new Date();
+            const diffTime = exp - now;
+            return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        } catch (e) {
+            return 0;
+        }
+    }
 
     async function loadTeachers() {
+        const listEl = document.getElementById("teachersList");
+        listEl.innerHTML = "<p style='font-size:12px; color:#8b949e; text-align:center;'>Ma'lumotlar olinmoqda...</p>";
+
         try {
-            const res = await fetch(`${API_BASE}?action=get_teachers&root_id=6291811673`);
+            const res = await fetch(`${API_BASE}?action=get_teachers&root_id=${ROOT_ID}`);
             const data = await res.json();
-            const listEl = document.getElementById("teachersList");
             listEl.innerHTML = "";
 
             if (!data.teachers || Object.keys(data.teachers).length === 0) {
-                listEl.innerHTML = "<p style='font-size:12px; color:#8b949e; text-align:center;'>Ustozlar yo'q</p>";
+                listEl.innerHTML = "<p style='font-size:12px; color:#8b949e; text-align:center;'>Hozircha ustozlar mavjud emas</p>";
                 return;
             }
 
             for (const [uid, t] of Object.entries(data.teachers)) {
+                const daysLeft = getDaysDiff(t.expires_at);
+                let badgeClass = "badge-active";
+                let badgeText = "🟢 Faol";
+
+                if (t.status === "paused") {
+                    badgeClass = "badge-paused";
+                    badgeText = "⏸️ Muzlatilgan";
+                } else if (daysLeft <= 0) {
+                    badgeClass = "badge-expired";
+                    badgeText = "🔴 Muddati tugagan";
+                } else {
+                    badgeText = `🟢 ${daysLeft} kun qoldi`;
+                }
+
                 const item = document.createElement("div");
                 item.className = "teacher-item";
                 item.innerHTML = `
-                    <div class="t-info">
-                        <h3>👤 ${t.name} (${t.class})</h3>
-                        <p>🆔 ${uid} • ${t.students_count} o'quvchi</p>
-                        <p>📅 Tugash sanasi: <b>${t.expires_at}</b></p>
+                    <div class="t-header">
+                        <div class="t-info">
+                            <h3>👤 ${t.name} (${t.class})</h3>
+                            <p>🆔 <code>${uid}</code> • ${t.students_count || 0} o'quvchi</p>
+                            <p>📅 Obuna tugash sanasi: <b>${t.expires_at}</b></p>
+                        </div>
+                        <span class="t-badge ${badgeClass}">${badgeText}</span>
                     </div>
-                    <span class="t-badge">${t.status || 'Faol'}</span>
+                    <div class="t-actions">
+                        <button class="btn-action extend" onclick="modifySubscription('${uid}', 'extend', 15)">➕ 15 kun</button>
+                        <button class="btn-action extend" onclick="modifySubscription('${uid}', 'extend', 30)">➕ 30 kun (1 oy)</button>
+                        <button class="btn-action extend" onclick="modifySubscription('${uid}', 'extend', 90)">➕ 3 oy</button>
+                        ${t.status === 'paused' 
+                            ? `<button class="btn-action" onclick="modifySubscription('${uid}', 'resume')">▶️ Faollashtirish</button>`
+                            : `<button class="btn-action pause" onclick="modifySubscription('${uid}', 'pause')">⏸️ Muzlatish</button>`
+                        }
+                        <button class="btn-action" onclick="sendTeacherReminder('${uid}', '${t.name}')">🔔 Eslatma</button>
+                        <button class="btn-action delete" onclick="deleteTeacher('${uid}', '${t.name}')">🗑️ O'chirish</button>
+                    </div>
                 `;
                 listEl.appendChild(item);
             }
         } catch (err) {
-            console.error(err);
+            listEl.innerHTML = "<p style='font-size:12px; color:#f85149; text-align:center;'>Xatolik yuz berdi: " + err.message + "</p>";
+        }
+    }
+
+    async function modifySubscription(telegramId, actionType, days = 0) {
+        const confirmMsg = actionType === 'extend' 
+            ? `Ushbu ustoz obunasini +${days} kunga uzaytirmoqchimisiz?`
+            : actionType === 'pause' ? "Obunani muzlatib qo'ymoqchimisiz?" : "Obunani qayta faollashtirmoqchimisiz?";
+
+        if (!confirm(confirmMsg)) return;
+
+        try {
+            const res = await fetch(API_BASE, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    action: "manage_subscription",
+                    root_id: ROOT_ID,
+                    telegram_id: telegramId,
+                    sub_action: actionType,
+                    days: days
+                })
+            });
+            const result = await res.json();
+            if (result.ok) {
+                alert("✅ Obuna muvaffaqiyatli yangilandi!");
+                loadTeachers();
+            } else {
+                alert("❌ Xatolik: " + (result.error || "Bajarilmadi"));
+            }
+        } catch (e) {
+            alert("❌ Tarmoq xatosi: " + e.message);
+        }
+    }
+
+    async function sendTeacherReminder(telegramId, name) {
+        if (!confirm(`${name} ustozga obuna muddati haqida eslatma xabarini yubormoqchimisiz?`)) return;
+
+        try {
+            const res = await fetch(API_BASE, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    action: "send_reminder",
+                    root_id: ROOT_ID,
+                    telegram_id: telegramId
+                })
+            });
+            const result = await res.json();
+            if (result.ok) {
+                alert(`✅ ${name} ustozga eslatma yuborildi!`);
+            } else {
+                alert("❌ Xatolik: " + (result.error || "Yuborib bo'lmadi"));
+            }
+        } catch (e) {
+            alert("❌ Xato: " + e.message);
+        }
+    }
+
+    async function deleteTeacher(telegramId, name) {
+        if (!confirm(`Haqiqatan ham ${name} ustozni tizimdan butunlay o'chirmoqchimisiz?`)) return;
+
+        try {
+            const res = await fetch(API_BASE, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    action: "delete_teacher",
+                    root_id: ROOT_ID,
+                    telegram_id: telegramId
+                })
+            });
+            const result = await res.json();
+            if (result.ok) {
+                alert(`🗑️ ${name} ustoz ro'yxatdan o'chirildi!`);
+                loadTeachers();
+            } else {
+                alert("❌ Xatolik: " + (result.error || "O'chirilmadi"));
+            }
+        } catch (e) {
+            alert("❌ Xato: " + e.message);
         }
     }
 
@@ -301,7 +501,7 @@
 
         const payload = {
             action: "add_teacher",
-            root_id: 6291811673,
+            root_id: ROOT_ID,
             telegram_id: document.getElementById("t_id").value.trim(),
             name: document.getElementById("t_name").value.trim(),
             class_name: document.getElementById("t_class").value.trim(),
@@ -333,7 +533,7 @@
             toast.innerText = "❌ Tarmoq xatosi: " + err.message;
         } finally {
             btn.disabled = false;
-            btn.innerText = "⚡ Tizimga Qo'shish va Faollashtirish";
+            btn.innerText = "⚡ Yangi Hisob Ochish va Faollashtirish";
         }
     });
 

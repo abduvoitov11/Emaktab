@@ -798,6 +798,141 @@ class handler(BaseHTTPRequestHandler):
                 self.wfile.write(json.dumps({"ok": True, "expires_at": exp_date}).encode())
                 return
 
+            # Obunani boshqarish (uzaytirish, muzlatish, faollashtirish)
+            elif data.get("action") == "manage_subscription":
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.end_headers()
+
+                if int(data.get("root_id", 0)) != ROOT_ID:
+                    self.wfile.write(json.dumps({"ok": False, "error": "Ruxsatsiz amal!"}).encode())
+                    return
+
+                t_id = str(data.get("telegram_id")).strip()
+                sub_action = data.get("sub_action")
+                days = int(data.get("days", 0))
+
+                teachers = load_teachers()
+                if t_id not in teachers:
+                    self.wfile.write(json.dumps({"ok": False, "error": "Ustoz topilmadi"}).encode())
+                    return
+
+                t = teachers[t_id]
+                if sub_action == "extend":
+                    curr_exp = t.get("expires_at", "")
+                    try:
+                        base_date = max(
+                            datetime.strptime(curr_exp, "%Y-%m-%d").date(),
+                            datetime.now(zoneinfo.ZoneInfo("Asia/Tashkent")).date()
+                        )
+                    except Exception:
+                        base_date = datetime.now(zoneinfo.ZoneInfo("Asia/Tashkent")).date()
+                    new_exp = (base_date + timedelta(days=days)).strftime("%Y-%m-%d")
+                    t["expires_at"] = new_exp
+                    t["status"] = "active"
+                    save_teachers_locally(teachers)
+                    sync_file_to_github("teachers.json", teachers, f"feat(billing): extend teacher {t_id} by {days} days from web")
+
+                    # Ustozga xabar
+                    try:
+                        loop = asyncio.new_event_loop()
+                        async def notify_ext():
+                            app = Application.builder().token(config.BOT_TOKEN).build()
+                            await app.initialize()
+                            notify_ext_text = (
+                                f"🎉 <b>Hurmatli {t.get('name')} ustoz!</b>\n"
+                                f"Sizning obunangiz <b>+{days} kunga</b> uzaytirildi!\n"
+                                f"📅 Yangi tugash muddati: <b>{new_exp}</b>"
+                            )
+                            await app.bot.send_message(
+                                chat_id=int(t_id),
+                                text=notify_ext_text,
+                                parse_mode=ParseMode.HTML
+                            )
+                            await app.shutdown()
+                        loop.run_until_complete(notify_ext())
+                        loop.close()
+                    except Exception:
+                        pass
+
+                elif sub_action == "pause":
+                    t["status"] = "paused"
+                    save_teachers_locally(teachers)
+                    sync_file_to_github("teachers.json", teachers, f"chore(billing): pause teacher {t_id}")
+
+                elif sub_action == "resume":
+                    t["status"] = "active"
+                    save_teachers_locally(teachers)
+                    sync_file_to_github("teachers.json", teachers, f"chore(billing): resume teacher {t_id}")
+
+                self.wfile.write(json.dumps({"ok": True}).encode())
+                return
+
+            # Eslatma xabari yuborish
+            elif data.get("action") == "send_reminder":
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.end_headers()
+
+                if int(data.get("root_id", 0)) != ROOT_ID:
+                    self.wfile.write(json.dumps({"ok": False, "error": "Ruxsatsiz amal!"}).encode())
+                    return
+
+                t_id = str(data.get("telegram_id")).strip()
+                teachers = load_teachers()
+                t = teachers.get(t_id, {})
+                t_name = t.get("name", "Hurmatli Ustoz")
+                exp_date = t.get("expires_at", "")
+
+                try:
+                    loop = asyncio.new_event_loop()
+                    async def send_rem():
+                        app = Application.builder().token(config.BOT_TOKEN).build()
+                        await app.initialize()
+                        rem_text = (
+                            f"🔔 <b>Hurmatli {t_name} ustoz!</b>\n"
+                            "━━━━━━━━━━━━━━━━━━━━━\n"
+                            f"AvtoEmaktab monitoring xizmati obunangiz <b>{exp_date}</b> sanasida yakunlanadi.\n\n"
+                            "Xizmat uzluksiz davom etishi uchun hisobingizni uzaytirishni unutmang!\n\n"
+                            f"Administrator: @{ADMIN_USERNAME}"
+                        )
+                        await app.bot.send_message(
+                            chat_id=int(t_id),
+                            text=rem_text,
+                            parse_mode=ParseMode.HTML
+                        )
+                        await app.shutdown()
+                    loop.run_until_complete(send_rem())
+                    loop.close()
+                    self.wfile.write(json.dumps({"ok": True}).encode())
+                except Exception as ex:
+                    self.wfile.write(json.dumps({"ok": False, "error": str(ex)}).encode())
+                return
+
+            # Ustozni o'chirish
+            elif data.get("action") == "delete_teacher":
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.end_headers()
+
+                if int(data.get("root_id", 0)) != ROOT_ID:
+                    self.wfile.write(json.dumps({"ok": False, "error": "Ruxsatsiz amal!"}).encode())
+                    return
+
+                t_id = str(data.get("telegram_id")).strip()
+                teachers = load_teachers()
+                if t_id in teachers:
+                    teachers.pop(t_id)
+                    save_teachers_locally(teachers)
+                    sync_file_to_github("teachers.json", teachers, f"chore(billing): delete teacher {t_id} from web")
+                    self.wfile.write(json.dumps({"ok": True}).encode())
+                else:
+                    self.wfile.write(json.dumps({"ok": False, "error": "Ustoz topilmadi"}).encode())
+                return
+
             # Aks holda Telegram Webhook update
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)

@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>AvtoEmaktab — Root Boshqaruv Paneli</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        :root {
+            --bg-color: #0d1117;
+            --card-bg: rgba(22, 27, 34, 0.85);
+            --border-color: rgba(48, 54, 61, 0.8);
+            --primary: #238636;
+            --primary-hover: #2ea043;
+            --accent: #58a6ff;
+            --danger: #da3633;
+            --text: #c9d1d9;
+            --text-heading: #f0f6fc;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text);
+            padding: 16px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 540px;
+        }
+
+        .header {
+            text-align: center;
+            padding: 20px 0 10px;
+        }
+
+        .header h1 {
+            font-size: 22px;
+            color: var(--text-heading);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .header p {
+            font-size: 13px;
+            color: #8b949e;
+            margin-top: 4px;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 18px;
+            margin-top: 16px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+        }
+
+        .card h2 {
+            font-size: 16px;
+            color: var(--text-heading);
+            margin-bottom: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .form-group {
+            margin-bottom: 12px;
+        }
+
+        label {
+            display: block;
+            font-size: 12px;
+            color: #8b949e;
+            margin-bottom: 6px;
+            font-weight: 500;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 10px 12px;
+            background: #090d13;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-heading);
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        input:focus, select:focus {
+            border-color: var(--accent);
+        }
+
+        .row {
+            display: flex;
+            gap: 10px;
+        }
+
+        .row .form-group {
+            flex: 1;
+        }
+
+        button.btn-primary {
+            width: 100%;
+            background: var(--primary);
+            color: #fff;
+            border: none;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+            margin-top: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        button.btn-primary:hover {
+            background: var(--primary-hover);
+        }
+
+        .teachers-list {
+            margin-top: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .teacher-item {
+            background: #090d13;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .t-info h3 {
+            font-size: 14px;
+            color: var(--text-heading);
+        }
+
+        .t-info p {
+            font-size: 12px;
+            color: #8b949e;
+            margin-top: 2px;
+        }
+
+        .t-badge {
+            background: rgba(46, 160, 67, 0.15);
+            color: #3fb950;
+            padding: 3px 8px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .toast {
+            display: none;
+            padding: 10px 14px;
+            border-radius: 8px;
+            margin-top: 12px;
+            font-size: 13px;
+            text-align: center;
+        }
+
+        .toast.success {
+            background: rgba(46, 160, 67, 0.2);
+            color: #3fb950;
+            border: 1px solid rgba(46, 160, 67, 0.4);
+            display: block;
+        }
+
+        .toast.error {
+            background: rgba(218, 54, 51, 0.2);
+            color: #f85149;
+            border: 1px solid rgba(218, 54, 51, 0.4);
+            display: block;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <h1>👑 Root Boshqaruv Paneli</h1>
+        <p>AvtoEmaktab • Ustozlar Hisobini Qo'shish va Nazorat</p>
+    </div>
+
+    <div class="card">
+        <h2>➕ Yangi Ustoz Qo'shish</h2>
+        <form id="addTeacherForm">
+            <div class="form-group">
+                <label>Telegram ID (Ustozning ID raqami):</label>
+                <input type="number" id="t_id" placeholder="Masalan: 896459615" required>
+            </div>
+
+            <div class="row">
+                <div class="form-group">
+                    <label>Ustoz Ismi:</label>
+                    <input type="text" id="t_name" placeholder="Masalan: Zuhra" required>
+                </div>
+                <div class="form-group">
+                    <label>Sinfi:</label>
+                    <input type="text" id="t_class" placeholder="Masalan: 9-B" required>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="form-group">
+                    <label>O'quvchilar Soni:</label>
+                    <input type="number" id="t_count" placeholder="Masalan: 34" value="30" required>
+                </div>
+                <div class="form-group">
+                    <label>Obuna Muddati (Kun):</label>
+                    <input type="number" id="t_days" placeholder="Masalan: 30" value="30" required>
+                </div>
+            </div>
+
+            <button type="submit" class="btn-primary" id="submitBtn">
+                <span>⚡ Tizimga Qo'shish va Faollashtirish</span>
+            </button>
+            <div id="toast" class="toast"></div>
+        </form>
+    </div>
+
+    <div class="card">
+        <h2>📋 Ulangan Ustozlar Ro'yxati</h2>
+        <div class="teachers-list" id="teachersList">
+            <p style="font-size:12px; color:#8b949e; text-align:center;">Yuklanmoqda...</p>
+        </div>
+    </div>
+</div>
+
+<script>
+    const tg = window.Telegram?.WebApp;
+    if (tg) {
+        tg.expand();
+        tg.ready();
+    }
+
+    // URL parametrlari yoki tg dan root tokenni olish
+    const API_BASE = "https://avtoemaktab.vercel.app/api/telegram";
+
+    async function loadTeachers() {
+        try {
+            const res = await fetch(`${API_BASE}?action=get_teachers&root_id=6291811673`);
+            const data = await res.json();
+            const listEl = document.getElementById("teachersList");
+            listEl.innerHTML = "";
+
+            if (!data.teachers || Object.keys(data.teachers).length === 0) {
+                listEl.innerHTML = "<p style='font-size:12px; color:#8b949e; text-align:center;'>Ustozlar yo'q</p>";
+                return;
+            }
+
+            for (const [uid, t] of Object.entries(data.teachers)) {
+                const item = document.createElement("div");
+                item.className = "teacher-item";
+                item.innerHTML = `
+                    <div class="t-info">
+                        <h3>👤 ${t.name} (${t.class})</h3>
+                        <p>🆔 ${uid} • ${t.students_count} o'quvchi</p>
+                        <p>📅 Tugash sanasi: <b>${t.expires_at}</b></p>
+                    </div>
+                    <span class="t-badge">${t.status || 'Faol'}</span>
+                `;
+                listEl.appendChild(item);
+            }
+        } catch (err) {
+            console.error(err);
+        }
+    }
+
+    document.getElementById("addTeacherForm").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const btn = document.getElementById("submitBtn");
+        const toast = document.getElementById("toast");
+
+        btn.disabled = true;
+        btn.innerText = "⏳ Qo'shilmoqda...";
+        toast.className = "toast";
+
+        const payload = {
+            action: "add_teacher",
+            root_id: 6291811673,
+            telegram_id: document.getElementById("t_id").value.trim(),
+            name: document.getElementById("t_name").value.trim(),
+            class_name: document.getElementById("t_class").value.trim(),
+            students_count: parseInt(document.getElementById("t_count").value),
+            days: parseInt(document.getElementById("t_days").value)
+        };
+
+        try {
+            const res = await fetch(API_BASE, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            });
+            const result = await res.json();
+
+            if (result.ok) {
+                toast.className = "toast success";
+                toast.innerText = `✅ ${payload.name} ustoz (${payload.class_name}) muvaffaqiyatli qo'shildi!`;
+                document.getElementById("addTeacherForm").reset();
+                document.getElementById("t_count").value = "30";
+                document.getElementById("t_days").value = "30";
+                loadTeachers();
+            } else {
+                toast.className = "toast error";
+                toast.innerText = "❌ Xatolik: " + (result.error || "Ruxsat yo'q");
+            }
+        } catch (err) {
+            toast.className = "toast error";
+            toast.innerText = "❌ Tarmoq xatosi: " + err.message;
+        } finally {
+            btn.disabled = false;
+            btn.innerText = "⚡ Tizimga Qo'shish va Faollashtirish";
+        }
+    });
+
+    loadTeachers();
+</script>
+
+</body>
+</html>

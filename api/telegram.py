@@ -29,6 +29,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 WEB_APP_URL = "https://abduvoitov11.github.io/Emaktab/"
+ADMIN_PANEL_URL = "https://abduvoitov11.github.io/Emaktab/admin.html"
 ADMIN_USERNAME = "Torabek_Abduvoitov"
 ADMIN_PHONE = "+998 94 091 12 19"
 ROOT_ID = int(config.ROOT_ID)
@@ -151,7 +152,8 @@ def get_main_keyboard(user_id: int) -> InlineKeyboardMarkup:
         ]
     ]
     if user_id == ROOT_ID:
-        keyboard.append([InlineKeyboardButton("⚙️ Admin Panel (Ustozlar)", callback_data="btn_admin_teachers")])
+        keyboard.append([InlineKeyboardButton("👑 Root Boshqaruv Paneli (Sayt)", web_app=WebAppInfo(url=ADMIN_PANEL_URL))])
+        keyboard.append([InlineKeyboardButton("⚙️ Ustozlar Ro'yxati (Botda)", callback_data="btn_admin_teachers")])
 
     return InlineKeyboardMarkup(keyboard)
 
@@ -703,10 +705,29 @@ class handler(BaseHTTPRequestHandler):
     def log_message(self, format, *args):
         logger.info(format % args)
 
+    def do_OPTIONS(self):
+        self.send_response(200)
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        self.end_headers()
+
     def do_GET(self):
         self.send_response(200)
         self.send_header("Content-Type", "application/json")
+        self.send_header("Access-Control-Allow-Origin", "*")
         self.end_headers()
+
+        # Agar admin panel ustozlar ro'yxatini so'rasa
+        if "action=get_teachers" in self.path:
+            if "root_id=6291811673" in self.path:
+                teachers = load_teachers()
+                self.wfile.write(json.dumps({"ok": True, "teachers": teachers}).encode())
+                return
+            else:
+                self.wfile.write(json.dumps({"ok": False, "error": "Ruxsat yo'q"}).encode())
+                return
+
         self.wfile.write(json.dumps({
             "status": "ok",
             "service": "AvtoEmaktab Webhook & Billing",
@@ -717,17 +738,77 @@ class handler(BaseHTTPRequestHandler):
         try:
             content_length = int(self.headers.get("Content-Length", 0))
             body = self.rfile.read(content_length)
-            update_data = json.loads(body.decode("utf-8"))
+            data = json.loads(body.decode("utf-8"))
 
+            # Agar saytdan yangi ustoz qo'shish so'rovi kelsa
+            if data.get("action") == "add_teacher":
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.end_headers()
+
+                if int(data.get("root_id", 0)) != ROOT_ID:
+                    self.wfile.write(json.dumps({"ok": False, "error": "Ruxsatsiz amal!"}).encode())
+                    return
+
+                t_id = str(data.get("telegram_id")).strip()
+                t_name = str(data.get("name")).strip()
+                t_class = str(data.get("class_name")).strip()
+                t_count = int(data.get("students_count", 30))
+                days = int(data.get("days", 30))
+
+                today = datetime.now(zoneinfo.ZoneInfo("Asia/Tashkent")).date()
+                exp_date = (today + timedelta(days=days)).strftime("%Y-%m-%d")
+
+                teachers = load_teachers()
+                teachers[t_id] = {
+                    "name": t_name,
+                    "class": t_class,
+                    "students_count": t_count,
+                    "expires_at": exp_date,
+                    "status": "active"
+                }
+                save_teachers_locally(teachers)
+                sync_file_to_github("teachers.json", teachers, f"feat(billing): add teacher {t_name} from web admin")
+
+                # Ustozga avto tabrik xabari
+                try:
+                    loop = asyncio.new_event_loop()
+                    async def notify():
+                        app = Application.builder().token(config.BOT_TOKEN).build()
+                        await app.initialize()
+                        notify_text = (
+                            f"🎉 <b>Assalomu alaykum, {t_name} ustoz!</b>\n"
+                            "━━━━━━━━━━━━━━━━━━━━━\n"
+                            f"Sizning <b>{t_class}</b> sinfingiz uchun AvtoEmaktab monitoring xizmati faollashtirildi!\n\n"
+                            f"📅 <b>Amal qilish muddati:</b> {exp_date} gacha ({days} kun)\n\n"
+                            "Hisobingizni tekshirish uchun: /kabinet"
+                        )
+                        await app.bot.send_message(
+                            chat_id=int(t_id),
+                            text=notify_text,
+                            parse_mode=ParseMode.HTML
+                        )
+                        await app.shutdown()
+                    loop.run_until_complete(notify())
+                    loop.close()
+                except Exception as ex:
+                    logger.warning(f"Could not notify teacher: {ex}")
+
+                self.wfile.write(json.dumps({"ok": True, "expires_at": exp_date}).encode())
+                return
+
+            # Aks holda Telegram Webhook update
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
             try:
-                loop.run_until_complete(process_update(update_data))
+                loop.run_until_complete(process_update(data))
             finally:
                 loop.close()
 
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
+            self.send_header("Access-Control-Allow-Origin", "*")
             self.end_headers()
             self.wfile.write(json.dumps({"ok": True}).encode())
 

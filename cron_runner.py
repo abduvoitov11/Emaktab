@@ -634,7 +634,8 @@ async def run():
     }
     logger.info(f"Hozirgi vaqt (Toshkent): {now.strftime('%Y-%m-%d %H:%M:%S')}, {day_names.get(weekday, '')}")
 
-    ignore_curfew = os.getenv("IGNORE_CURFEW", "false").lower() == "true"
+    force_run = os.getenv("FORCE_RUN", "false").lower() == "true"
+    ignore_curfew = os.getenv("IGNORE_CURFEW", "false").lower() == "true" or force_run
     if config.is_curfew_time(now) and not ignore_curfew:
         curfew_msg = (
             "🛑 <b>TUNGI XAVFSIZLIK TAQIQI (21:45 - 07:00)</b>\n"
@@ -655,7 +656,6 @@ async def run():
             logger.error(f"Tungi taqiq xabarini yuborishda xato: {e}")
         return
 
-    force_run = os.getenv("FORCE_RUN", "false").lower() == "true"
     custom_day = os.getenv("CUSTOM_DAY", "auto").lower()
 
     if custom_day in ["0", "mon", "dushanba"]:

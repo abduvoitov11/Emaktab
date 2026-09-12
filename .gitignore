@@ -35,5 +35,10 @@ sessions/
 
 test_output/
 test_captcha.py
-
 .vercel/
+*pat*.txt
+*token*.txt
+*.key
+*.pem
+*.session
+.DS_Store

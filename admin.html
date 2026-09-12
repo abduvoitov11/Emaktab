@@ -3,18 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AvtoEmaktab — Root Boshqaruv Paneli</title>
+    <title>AvtoEmaktab — Boshqaruv Markazi</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         :root {
-            --bg-color: #0d1117;
-            --card-bg: rgba(22, 27, 34, 0.85);
+            --bg-color: #06090e;
+            --card-bg: rgba(13, 17, 23, 0.85);
             --border-color: rgba(48, 54, 61, 0.8);
             --primary: #238636;
             --primary-hover: #2ea043;
             --accent: #58a6ff;
-            --danger: #da3633;
-            --warning: #d29922;
+            --danger: #ff3838;
+            --danger-glow: rgba(255, 56, 56, 0.4);
             --text: #c9d1d9;
             --text-heading: #f0f6fc;
         }
@@ -23,41 +23,154 @@
             box-sizing: border-box;
             margin: 0;
             padding: 0;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace;
         }
 
         body {
             background-color: var(--bg-color);
             color: var(--text);
-            padding: 14px;
+            min-height: 100vh;
             display: flex;
             justify-content: center;
-            min-height: 100vh;
+            align-items: center;
+            overflow-x: hidden;
         }
 
-        .container {
-            width: 100%;
-            max-width: 580px;
-        }
-
-        /* 403 BLOK EKRANI */
+        /* ==================== 3D FORBIDDEN SCREEN ==================== */
         #accessDeniedScreen {
             display: none;
+            width: 100%;
+            max-width: 600px;
+            padding: 24px 16px;
             text-align: center;
-            padding: 60px 20px;
-        }
-        #accessDeniedScreen h1 {
-            font-size: 24px;
-            color: var(--danger);
-            margin-bottom: 12px;
-        }
-        #accessDeniedScreen p {
-            font-size: 14px;
-            color: #8b949e;
-            line-height: 1.6;
+            perspective: 1000px;
         }
 
-        /* YUKLANISH EKRANI */
+        /* 3D Rotating Vault Box */
+        .vault-wrapper {
+            width: 120px;
+            height: 120px;
+            margin: 0 auto 24px;
+            perspective: 800px;
+        }
+
+        .cube {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            transform-style: preserve-3d;
+            animation: rotateCube 8s infinite linear;
+        }
+
+        .cube-face {
+            position: absolute;
+            width: 120px;
+            height: 120px;
+            background: rgba(255, 20, 50, 0.1);
+            border: 2px solid #ff3838;
+            box-shadow: 0 0 25px rgba(255, 56, 56, 0.5), inset 0 0 25px rgba(255, 56, 56, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            backdrop-filter: blur(4px);
+        }
+
+        .cube-face.front  { transform: rotateY(0deg) translateZ(60px); }
+        .cube-face.back   { transform: rotateY(180deg) translateZ(60px); }
+        .cube-face.right  { transform: rotateY(90deg) translateZ(60px); }
+        .cube-face.left   { transform: rotateY(-90deg) translateZ(60px); }
+        .cube-face.top    { transform: rotateX(90deg) translateZ(60px); }
+        .cube-face.bottom { transform: rotateX(-90deg) translateZ(60px); }
+
+        @keyframes rotateCube {
+            0%   { transform: rotateX(15deg) rotateY(0deg); }
+            100% { transform: rotateX(15deg) rotateY(360deg); }
+        }
+
+        /* Glitch 3D Text */
+        .glitch-title {
+            font-size: 38px;
+            font-weight: 900;
+            color: #fff;
+            text-transform: uppercase;
+            position: relative;
+            letter-spacing: 4px;
+            text-shadow: 0 0 20px var(--danger), 0 0 40px var(--danger);
+            animation: glitch 2.5s infinite;
+        }
+
+        @keyframes glitch {
+            0% { transform: translate(0); }
+            20% { transform: translate(-2px, 2px); }
+            40% { transform: translate(-2px, -2px); }
+            60% { transform: translate(2px, 2px); }
+            80% { transform: translate(2px, -2px); }
+            100% { transform: translate(0); }
+        }
+
+        .sub-title {
+            font-size: 14px;
+            color: #ff6b6b;
+            letter-spacing: 2px;
+            margin-top: 6px;
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+
+        /* Cyber Forensic Terminal Box */
+        .terminal-box {
+            background: #090d13;
+            border: 1px solid rgba(255, 56, 56, 0.4);
+            border-radius: 10px;
+            padding: 16px;
+            margin-top: 24px;
+            text-align: left;
+            box-shadow: 0 0 30px rgba(0,0,0,0.8), 0 0 15px rgba(255, 56, 56, 0.15);
+            font-size: 12px;
+            color: #8b949e;
+            line-height: 1.7;
+        }
+
+        .terminal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(255, 56, 56, 0.2);
+            padding-bottom: 8px;
+            margin-bottom: 12px;
+            font-size: 11px;
+            color: #ff4757;
+            font-weight: 700;
+            letter-spacing: 1px;
+        }
+
+        .terminal-line {
+            display: flex;
+            justify-content: space-between;
+            padding: 3px 0;
+            border-bottom: 1px dashed rgba(255, 255, 255, 0.05);
+        }
+
+        .terminal-line span.val {
+            color: #f1f2f6;
+            font-weight: 600;
+            font-family: monospace;
+        }
+
+        .terminal-line span.danger-val {
+            color: #ff4757;
+            font-weight: 700;
+        }
+
+        .warning-footer {
+            margin-top: 18px;
+            font-size: 11px;
+            color: #747d8c;
+            line-height: 1.5;
+        }
+
+        /* ==================== LOADING SPINNER ==================== */
         #loadingScreen {
             display: flex;
             flex-direction: column;
@@ -66,8 +179,8 @@
             padding: 80px 20px;
         }
         .spinner {
-            width: 40px;
-            height: 40px;
+            width: 44px;
+            height: 44px;
             border: 3px solid rgba(88, 166, 255, 0.2);
             border-top-color: var(--accent);
             border-radius: 50%;
@@ -76,16 +189,20 @@
         }
         @keyframes spin { to { transform: rotate(360deg); } }
 
-        /* ASOSIY DASHBOARD (Dastlab yashirin) */
+        /* ==================== MAIN DASHBOARD (ROOT) ==================== */
         #mainDashboard {
             display: none;
+            width: 100%;
+            max-width: 580px;
+            padding: 16px;
+            animation: fadeIn 0.4s ease-in;
         }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
         .header {
             text-align: center;
             padding: 16px 0 10px;
         }
-
         .header h1 {
             font-size: 20px;
             color: var(--text-heading);
@@ -94,13 +211,11 @@
             justify-content: center;
             gap: 8px;
         }
-
         .header p {
             font-size: 13px;
             color: #8b949e;
             margin-top: 4px;
         }
-
         .auth-badge {
             display: inline-flex;
             align-items: center;
@@ -124,7 +239,6 @@
             backdrop-filter: blur(10px);
             box-shadow: 0 8px 24px rgba(0,0,0,0.3);
         }
-
         .card h2 {
             font-size: 15px;
             color: var(--text-heading);
@@ -133,11 +247,7 @@
             align-items: center;
             justify-content: space-between;
         }
-
-        .form-group {
-            margin-bottom: 10px;
-        }
-
+        .form-group { margin-bottom: 10px; }
         label {
             display: block;
             font-size: 12px;
@@ -145,7 +255,6 @@
             margin-bottom: 4px;
             font-weight: 500;
         }
-
         input {
             width: 100%;
             padding: 9px 11px;
@@ -157,19 +266,9 @@
             outline: none;
             transition: border-color 0.2s;
         }
-
-        input:focus {
-            border-color: var(--accent);
-        }
-
-        .row {
-            display: flex;
-            gap: 10px;
-        }
-
-        .row .form-group {
-            flex: 1;
-        }
+        input:focus { border-color: var(--accent); }
+        .row { display: flex; gap: 10px; }
+        .row .form-group { flex: 1; }
 
         button.btn-primary {
             width: 100%;
@@ -184,10 +283,7 @@
             transition: background 0.2s;
             margin-top: 4px;
         }
-
-        button.btn-primary:hover {
-            background: var(--primary-hover);
-        }
+        button.btn-primary:hover { background: var(--primary-hover); }
 
         button.btn-accent {
             background: #1f6feb;
@@ -198,10 +294,6 @@
             font-size: 13px;
             font-weight: 600;
             cursor: pointer;
-            transition: background 0.2s;
-        }
-        button.btn-accent:hover {
-            background: #388bfd;
         }
 
         .days-selector {
@@ -210,7 +302,6 @@
             gap: 8px;
             margin-bottom: 12px;
         }
-
         .day-chip {
             background: #21262d;
             border: 1px solid var(--border-color);
@@ -220,9 +311,7 @@
             color: #c9d1d9;
             cursor: pointer;
             user-select: none;
-            transition: all 0.2s;
         }
-
         .day-chip.active {
             background: rgba(46, 160, 67, 0.2);
             border-color: #2ea043;
@@ -236,7 +325,6 @@
             flex-direction: column;
             gap: 12px;
         }
-
         .teacher-item {
             background: #090d13;
             border: 1px solid var(--border-color);
@@ -246,45 +334,22 @@
             flex-direction: column;
             gap: 10px;
         }
-
         .t-header {
             display: flex;
             justify-content: space-between;
             align-items: flex-start;
         }
-
-        .t-info h3 {
-            font-size: 15px;
-            color: var(--text-heading);
-        }
-
-        .t-info p {
-            font-size: 12px;
-            color: #8b949e;
-            margin-top: 2px;
-        }
-
+        .t-info h3 { font-size: 15px; color: var(--text-heading); }
+        .t-info p { font-size: 12px; color: #8b949e; margin-top: 2px; }
         .t-badge {
             padding: 3px 8px;
             border-radius: 20px;
             font-size: 11px;
             font-weight: 600;
         }
-
-        .badge-active {
-            background: rgba(46, 160, 67, 0.15);
-            color: #3fb950;
-        }
-
-        .badge-paused {
-            background: rgba(210, 153, 34, 0.15);
-            color: #d29922;
-        }
-
-        .badge-expired {
-            background: rgba(218, 54, 51, 0.15);
-            color: #f85149;
-        }
+        .badge-active { background: rgba(46, 160, 67, 0.15); color: #3fb950; }
+        .badge-paused { background: rgba(210, 153, 34, 0.15); color: #d29922; }
+        .badge-expired { background: rgba(218, 54, 51, 0.15); color: #f85149; }
 
         .t-actions {
             display: flex;
@@ -293,7 +358,6 @@
             padding-top: 8px;
             border-top: 1px solid rgba(48, 54, 61, 0.5);
         }
-
         .btn-action {
             background: #21262d;
             border: 1px solid var(--border-color);
@@ -303,36 +367,11 @@
             font-size: 11px;
             font-weight: 500;
             cursor: pointer;
-            transition: all 0.2s;
         }
-
-        .btn-action:hover {
-            background: #30363d;
-            color: #fff;
-        }
-
-        .btn-action.extend {
-            border-color: rgba(46, 160, 67, 0.4);
-            color: #3fb950;
-        }
-
-        .btn-action.pause {
-            border-color: rgba(210, 153, 34, 0.4);
-            color: #d29922;
-        }
-
-        .btn-action.delete {
-            border-color: rgba(218, 54, 51, 0.4);
-            color: #f85149;
-        }
-
-        .btn-refresh {
-            background: none;
-            border: none;
-            color: var(--accent);
-            font-size: 12px;
-            cursor: pointer;
-        }
+        .btn-action.extend { border-color: rgba(46, 160, 67, 0.4); color: #3fb950; }
+        .btn-action.pause { border-color: rgba(210, 153, 34, 0.4); color: #d29922; }
+        .btn-action.delete { border-color: rgba(218, 54, 51, 0.4); color: #f85149; }
+        .btn-refresh { background: none; border: none; color: var(--accent); font-size: 12px; cursor: pointer; }
 
         .toast {
             display: none;
@@ -342,43 +381,75 @@
             font-size: 13px;
             text-align: center;
         }
-
-        .toast.success {
-            background: rgba(46, 160, 67, 0.2);
-            color: #3fb950;
-            border: 1px solid rgba(46, 160, 67, 0.4);
-            display: block;
-        }
-
-        .toast.error {
-            background: rgba(218, 54, 51, 0.2);
-            color: #f85149;
-            border: 1px solid rgba(218, 54, 51, 0.4);
-            display: block;
-        }
+        .toast.success { background: rgba(46, 160, 67, 0.2); color: #3fb950; border: 1px solid rgba(46, 160, 67, 0.4); display: block; }
+        .toast.error { background: rgba(218, 54, 51, 0.2); color: #f85149; border: 1px solid rgba(218, 54, 51, 0.4); display: block; }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <!-- 1. YUKLANISH HOLATI -->
+    <!-- 1. YUKLANISH EKRANI -->
     <div id="loadingScreen">
         <div class="spinner"></div>
-        <p style="font-size:14px; color:#8b949e;">Shaxsingiz tekshirilmoqda...</p>
+        <p style="font-size:13px; color:#8b949e; letter-spacing:1px;">XAVFSIZLIK PROTOKOLI TEKSHIRILMOQDA...</p>
     </div>
 
-    <!-- 2. TAQIQLANGAN EKRAN (Begonalar uchun) -->
+    <!-- 2. 3D FORBIDDEN SCREEN (Begonalar uchun kinematik kiber ekran) -->
     <div id="accessDeniedScreen">
-        <div style="font-size:48px; margin-bottom:12px;">🔒</div>
-        <h1>403 — KIRISH TAQIQLANGAN</h1>
-        <p>Ushbu boshqaruv markazi faqat tasdiqlangan <b>Root Administrator</b> uchun mo'ljallangan.</p>
-        <p style="margin-top:8px; font-size:12px; color:#6e7681;">
-            Telegram WebApp autentifikatsiyasi orqali sizning shaxsingiz tasdiqlanmadi.<br>
-            Ushbu hodisa xavfsizlik jurnaliga muhrlandi.
+        <div class="vault-wrapper">
+            <div class="cube">
+                <div class="cube-face front">🔒</div>
+                <div class="cube-face back">⛔</div>
+                <div class="cube-face right">🛑</div>
+                <div class="cube-face left">🔐</div>
+                <div class="cube-face top">403</div>
+                <div class="cube-face bottom">DENIED</div>
+            </div>
+        </div>
+
+        <h1 class="glitch-title">403 FORBIDDEN</h1>
+        <p class="sub-title">Kirish Qat'iyan Taqiqlangan</p>
+
+        <div class="terminal-box">
+            <div class="terminal-header">
+                <span>[SECURITY_SHIELD_V4_ACTIVE]</span>
+                <span>● LEVEL 5 BREACH</span>
+            </div>
+            <div class="terminal-line">
+                <span>Xavfsizlik Holati:</span>
+                <span class="danger-val">BLOKLANDI (ACCESS_REJECTED)</span>
+            </div>
+            <div class="terminal-line">
+                <span>Ruxsat Darajasi:</span>
+                <span class="val">Root Admin Required</span>
+            </div>
+            <div class="terminal-line">
+                <span>Sizning IP Manzilingiz:</span>
+                <span class="val" id="disp_ip">Aniqlanmoqda...</span>
+            </div>
+            <div class="terminal-line">
+                <span>Provayder (ISP):</span>
+                <span class="val" id="disp_isp">Skanerlanmoqda...</span>
+            </div>
+            <div class="terminal-line">
+                <span>Qurilma / OS:</span>
+                <span class="val" id="disp_os">Tahlil qilinmoqda...</span>
+            </div>
+            <div class="terminal-line">
+                <span>GPU Renderer:</span>
+                <span class="val" id="disp_gpu">Olinmoqda...</span>
+            </div>
+            <div class="terminal-line">
+                <span>Raqamli Dalil Qayd ID:</span>
+                <span class="danger-val" id="disp_dalil">#DALIL-INIT</span>
+            </div>
+        </div>
+
+        <p class="warning-footer">
+            Ushbu tizimga ruxsatsiz kirish urinishlari O'zR Jinoyat Kodeksining 278-moddasi (Kompyuter axborotidan qonunga xilof ravishda foydalanish) bo'yicha qayd etiladi. Barcha raqamli izlaringiz saqlandi.
         </p>
     </div>
 
-    <!-- 3. ASOSIY BOSHQARUV PANELI (Faqat Root uchun ochiladi) -->
+    <!-- 3. ASOSIY ROOT DASHBOARD (Faqat Root Admin kirganda ochiladi) -->
     <div id="mainDashboard">
         <div class="header">
             <h1>👑 Root Boshqaruv Markazi</h1>
@@ -471,88 +542,66 @@
             </div>
         </div>
     </div>
-</div>
 
 <script>
     const tg = window.Telegram?.WebApp;
     const ROOT_ID = 6291811673;
     const API_BASE = "https://avtoemaktab.vercel.app/api/telegram";
 
-    // ==================== TO'LIQ RAQAMLI IZ VA TELEMETRIYA DETEKTORI ====================
+    // Anti-DevTools Himoyasi (F12 va Inspect blok)
+    document.addEventListener("keydown", (e) => {
+        if (e.key === "F12" || (e.ctrlKey && e.shiftKey && (e.key === "I" || e.key === "J" || e.key === "C")) || (e.ctrlKey && e.key === "U")) {
+            e.preventDefault();
+            return false;
+        }
+    });
+
     async function collectVisitorForensics() {
         const data = {
             url: window.location.href,
-            referrer: document.referrer || "To'g'ridan-to'g'ri kirish (Direct)",
-            screen: window.screen.width + "x" + window.screen.height + " (" + (window.devicePixelRatio || 1) + "x DPR)",
-            viewport: window.innerWidth + "x" + window.innerHeight,
-            cores: navigator.hardwareConcurrency || 'Noma\'lum',
-            ram: navigator.deviceMemory ? (navigator.deviceMemory + " GB") : 'Noma\'lum',
-            platform: navigator.platform || 'Noma\'lum',
+            referrer: document.referrer || "Direct",
+            screen: window.screen.width + "x" + window.screen.height,
+            platform: navigator.platform || 'Unknown',
             userAgent: navigator.userAgent,
-            language: navigator.language || 'Noma\'lum',
-            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Noma\'lum',
-            battery: 'Aniqlanmadi',
-            connection: 'Noma\'lum',
-            gpu: 'Noma\'lum'
+            gpu: 'Unknown',
+            ip: 'Unknown',
+            org: 'Unknown',
+            dalil_id: "DALIL-" + Date.now()
         };
 
-        // 1. WebGL GPU Renderer
         try {
             const canvas = document.createElement('canvas');
-            const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+            const gl = canvas.getContext('webgl');
             if (gl) {
-                const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
-                if (debugInfo) {
-                    data.gpu = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
-                }
+                const dbg = gl.getExtension('WEBGL_debug_renderer_info');
+                if (dbg) data.gpu = gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL);
             }
         } catch (e) {}
 
-        // 2. Battery API
         try {
-            if (navigator.getBattery) {
-                const b = await navigator.getBattery();
-                data.battery = Math.round(b.level * 100) + "% (" + (b.charging ? 'Zaryadlanmoqda ⚡' : 'Batareyada 🔋') + ")";
-            }
-        } catch (e) {}
-
-        // 3. Tarmoq tezligi
-        try {
-            if (navigator.connection) {
-                data.connection = (navigator.connection.effectiveType || '') + " (" + (navigator.connection.downlink || '') + " Mbps)";
-            }
-        } catch (e) {}
-
-        // 4. IP va Geo lokatsiya
-        try {
-            const ipRes = await fetch('https://ipapi.co/json/');
-            if (ipRes.ok) {
-                const ipData = await ipRes.json();
-                data.ip = ipData.ip;
-                data.city = ipData.city;
-                data.region = ipData.region;
-                data.country = ipData.country_name;
-                data.org = ipData.org;
+            const res = await fetch('https://ipapi.co/json/');
+            if (res.ok) {
+                const j = await res.json();
+                data.ip = j.ip;
+                data.city = j.city;
+                data.country = j.country_name;
+                data.org = j.org;
             }
         } catch (e) {}
 
         return data;
     }
 
-
-    // ==================== AVTOMATIK ROOT AUTENTIFIKATSIYASI ====================
     async function verifyRootAccess() {
         const loadingEl = document.getElementById("loadingScreen");
         const deniedEl = document.getElementById("accessDeniedScreen");
         const mainEl = document.getElementById("mainDashboard");
 
-        // Telegram WebApp orqali kirilganini tekshirish
         const user = tg?.initDataUnsafe?.user;
-        const initData = tg?.initData || "";
         const urlParams = new URLSearchParams(window.location.search);
         const secretKey = urlParams.get("key");
 
-        // Agar foydalanuvchi haqiqiy Root bo'lsa (ID: 6291811673) yoki maxfiy token bilan kirgan bo'lsa
+        // Faqat haqiqiy Root Telegram ID si bilan kirilganda
         if ((user && user.id === ROOT_ID) || secretKey === "ae_root_9940911219") {
             if (tg) {
                 tg.expand();
@@ -561,18 +610,22 @@
             loadingEl.style.display = "none";
             deniedEl.style.display = "none";
             mainEl.style.display = "block";
-
-            // Ma'lumotlarni yuklash
             loadSchedule();
             loadTeachers();
         } else {
-            // BEGONA FOYDALANUVCHI -> DARHOL BLOK VA TELEMETRIYA YIG'ISH!
+            // BEGONA FOYDALANUVCHI -> 3D KIBER FORBIDDEN EKRAN!
             loadingEl.style.display = "none";
             deniedEl.style.display = "block";
             mainEl.style.display = "none";
 
-            // Barcha raqamli izlarni yig'ib Root ga yuborish
-            collectVisitorForensics().then(forensics => {
+            // Forensik izlarni terminalda aks ettirish va Root ga yuborish
+            collectVisitorForensics().then(f => {
+                document.getElementById("disp_ip").innerText = f.ip + (f.city ? ` (${f.city})` : '');
+                document.getElementById("disp_isp").innerText = f.org;
+                document.getElementById("disp_os").innerText = f.platform;
+                document.getElementById("disp_gpu").innerText = f.gpu.substring(0, 30);
+                document.getElementById("disp_dalil").innerText = "#" + f.dalil_id;
+
                 fetch(API_BASE, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
@@ -581,9 +634,9 @@
                         user_id: user ? user.id : 0,
                         name: user ? user.first_name : "Begona Foydalanuvchi",
                         username: user ? user.username : "unknown",
-                        forensics: forensics
+                        forensics: f
                     })
-                }).catch(err => console.error(err));
+                }).catch(e => console.error(e));
             });
         }
     }
@@ -603,7 +656,6 @@
                 const s = data.schedule;
                 document.getElementById("timeStart").value = s.time_window_start || "14:00";
                 document.getElementById("timeEnd").value = s.time_window_end || "20:00";
-
                 document.querySelectorAll(".day-chip").forEach(chip => {
                     const day = chip.getAttribute("data-day");
                     if (s.active_days && s.active_days.includes(day)) {
@@ -613,45 +665,40 @@
                     }
                 });
             }
-        } catch (e) {
-            console.error(e);
-        }
+        } catch (e) {}
     }
 
     async function saveSchedule() {
         const toast = document.getElementById("scheduleToast");
         toast.className = "toast";
-
         const activeDays = [];
         document.querySelectorAll(".day-chip.active").forEach(chip => {
             activeDays.push(chip.getAttribute("data-day"));
         });
 
-        const payload = {
-            action: "save_schedule",
-            root_id: ROOT_ID,
-            active_days: activeDays,
-            time_window_start: document.getElementById("timeStart").value,
-            time_window_end: document.getElementById("timeEnd").value
-        };
-
         try {
             const res = await fetch(API_BASE, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(payload)
+                body: JSON.stringify({
+                    action: "save_schedule",
+                    root_id: ROOT_ID,
+                    active_days: activeDays,
+                    time_window_start: document.getElementById("timeStart").value,
+                    time_window_end: document.getElementById("timeEnd").value
+                })
             });
-            const result = await res.json();
-            if (result.ok) {
+            const r = await res.json();
+            if (r.ok) {
                 toast.className = "toast success";
-                toast.innerText = "✅ Random kirish grafigi muvaffaqiyatli saqlandi!";
+                toast.innerText = "✅ Random grafik muvaffaqiyatli saqlandi!";
             } else {
                 toast.className = "toast error";
-                toast.innerText = "❌ Xato: " + (result.error || "Saqlanmadi");
+                toast.innerText = "❌ Xato: " + (r.error || "Saqlanmadi");
             }
         } catch (err) {
             toast.className = "toast error";
-            toast.innerText = "❌ Tarmoq xatosi: " + err.message;
+            toast.innerText = "❌ Xato: " + err.message;
         }
     }
 
@@ -666,18 +713,15 @@
             const res = await fetch(API_BASE, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    action: "trigger_run",
-                    root_id: ROOT_ID
-                })
+                body: JSON.stringify({ action: "trigger_run", root_id: ROOT_ID })
             });
-            const result = await res.json();
-            if (result.ok) {
+            const r = await res.json();
+            if (r.ok) {
                 toast.className = "toast success";
-                toast.innerText = "🚀 Monitoring muvaffaqiyatli ishga tushirildi! Natijalar Telegramga keladi.";
+                toast.innerText = "🚀 Monitoring ishga tushirildi! Natijalar Telegramga keladi.";
             } else {
                 toast.className = "toast error";
-                toast.innerText = "❌ Xato: " + (result.error || "Ishga tushirilmadi");
+                toast.innerText = "❌ Xato: " + (r.error || "Ishga tushmadi");
             }
         } catch (e) {
             toast.className = "toast error";
@@ -688,17 +732,14 @@
     function getDaysDiff(dateStr) {
         try {
             const exp = new Date(dateStr);
-            const now = new Date();
-            const diffTime = exp - now;
+            const diffTime = exp - new Date();
             return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        } catch (e) {
-            return 0;
-        }
+        } catch (e) { return 0; }
     }
 
     async function loadTeachers() {
         const listEl = document.getElementById("teachersList");
-        listEl.innerHTML = "<p style='font-size:12px; color:#8b949e; text-align:center;'>Ma'lumotlar olinmoqda...</p>";
+        listEl.innerHTML = "<p style='font-size:12px; color:#8b949e; text-align:center;'>Yuklanmoqda...</p>";
 
         try {
             const res = await fetch(`${API_BASE}?action=get_teachers&root_id=${ROOT_ID}`);
@@ -706,7 +747,7 @@
             listEl.innerHTML = "";
 
             if (!data.teachers || Object.keys(data.teachers).length === 0) {
-                listEl.innerHTML = "<p style='font-size:12px; color:#8b949e; text-align:center;'>Hozircha ustozlar mavjud emas</p>";
+                listEl.innerHTML = "<p style='font-size:12px; color:#8b949e; text-align:center;'>Ustozlar yo'q</p>";
                 return;
             }
 
@@ -732,117 +773,66 @@
                         <div class="t-info">
                             <h3>👤 ${t.name} (${t.class})</h3>
                             <p>🆔 <code>${uid}</code> • ${t.students_count || 0} o'quvchi</p>
-                            <p>📅 Obuna tugash sanasi: <b>${t.expires_at}</b></p>
+                            <p>📅 Obuna: <b>${t.expires_at}</b></p>
                         </div>
                         <span class="t-badge ${badgeClass}">${badgeText}</span>
                     </div>
                     <div class="t-actions">
                         <button class="btn-action extend" onclick="modifySubscription('${uid}', 'extend', 15)">➕ 15 kun</button>
-                        <button class="btn-action extend" onclick="modifySubscription('${uid}', 'extend', 30)">➕ 30 kun (1 oy)</button>
+                        <button class="btn-action extend" onclick="modifySubscription('${uid}', 'extend', 30)">➕ 30 kun</button>
                         <button class="btn-action extend" onclick="modifySubscription('${uid}', 'extend', 90)">➕ 3 oy</button>
                         ${t.status === 'paused' 
                             ? `<button class="btn-action" onclick="modifySubscription('${uid}', 'resume')">▶️ Faollashtirish</button>`
                             : `<button class="btn-action pause" onclick="modifySubscription('${uid}', 'pause')">⏸️ Muzlatish</button>`
                         }
-                        <button class="btn-action" onclick="sendTeacherReminder('${uid}', '${t.name}')">🔔 Eslatma</button>
                         <button class="btn-action delete" onclick="deleteTeacher('${uid}', '${t.name}')">🗑️ O'chirish</button>
                     </div>
                 `;
                 listEl.appendChild(item);
             }
         } catch (err) {
-            listEl.innerHTML = "<p style='font-size:12px; color:#f85149; text-align:center;'>Xatolik yuz berdi: " + err.message + "</p>";
+            listEl.innerHTML = "<p style='font-size:12px; color:#f85149; text-align:center;'>Xatolik: " + err.message + "</p>";
         }
     }
 
     async function modifySubscription(telegramId, actionType, days = 0) {
-        const confirmMsg = actionType === 'extend' 
-            ? `Ushbu ustoz obunasini +${days} kunga uzaytirmoqchimisiz?`
-            : actionType === 'pause' ? "Obunani muzlatib qo'ymoqchimisiz?" : "Obunani qayta faollashtirmoqchimisiz?";
-
-        if (!confirm(confirmMsg)) return;
-
+        if (!confirm("Amalni tasdiqlaysizmi?")) return;
         try {
             const res = await fetch(API_BASE, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    action: "manage_subscription",
-                    root_id: ROOT_ID,
-                    telegram_id: telegramId,
-                    sub_action: actionType,
-                    days: days
-                })
+                body: JSON.stringify({ action: "manage_subscription", root_id: ROOT_ID, telegram_id: telegramId, sub_action: actionType, days: days })
             });
-            const result = await res.json();
-            if (result.ok) {
-                alert("✅ Obuna muvaffaqiyatli yangilandi!");
+            const r = await res.json();
+            if (r.ok) {
+                alert("✅ Obuna yangilandi!");
                 loadTeachers();
-            } else {
-                alert("❌ Xatolik: " + (result.error || "Bajarilmadi"));
-            }
-        } catch (e) {
-            alert("❌ Tarmoq xatosi: " + e.message);
-        }
-    }
-
-    async function sendTeacherReminder(telegramId, name) {
-        if (!confirm(`${name} ustozga obuna muddati haqida eslatma xabarini yubormoqchimisiz?`)) return;
-
-        try {
-            const res = await fetch(API_BASE, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    action: "send_reminder",
-                    root_id: ROOT_ID,
-                    telegram_id: telegramId
-                })
-            });
-            const result = await res.json();
-            if (result.ok) {
-                alert(`✅ ${name} ustozga eslatma yuborildi!`);
-            } else {
-                alert("❌ Xatolik: " + (result.error || "Yuborib bo'lmadi"));
-            }
-        } catch (e) {
-            alert("❌ Xato: " + e.message);
-        }
+            } else { alert("❌ Xatolik: " + (r.error || "Bajarilmadi")); }
+        } catch (e) { alert("❌ Tarmoq xatosi: " + e.message); }
     }
 
     async function deleteTeacher(telegramId, name) {
-        if (!confirm(`Haqiqatan ham ${name} ustozni tizimdan butunlay o'chirmoqchimisiz?`)) return;
-
+        if (!confirm(`${name} ustozni tizimdan o'chirmoqchimisiz?`)) return;
         try {
             const res = await fetch(API_BASE, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    action: "delete_teacher",
-                    root_id: ROOT_ID,
-                    telegram_id: telegramId
-                })
+                body: JSON.stringify({ action: "delete_teacher", root_id: ROOT_ID, telegram_id: telegramId })
             });
-            const result = await res.json();
-            if (result.ok) {
-                alert(`🗑️ ${name} ustoz ro'yxatdan o'chirildi!`);
+            const r = await res.json();
+            if (r.ok) {
+                alert(`🗑️ ${name} ustoz o'chirildi!`);
                 loadTeachers();
-            } else {
-                alert("❌ Xatolik: " + (result.error || "O'chirilmadi"));
-            }
-        } catch (e) {
-            alert("❌ Xato: " + e.message);
-        }
+            } else { alert("❌ Xatolik: " + r.error); }
+        } catch (e) { alert("❌ Xato: " + e.message); }
     }
 
     document.getElementById("addTeacherForm").addEventListener("submit", async (e) => {
         e.preventDefault();
         const btn = document.getElementById("submitBtn");
         const toast = document.getElementById("toast");
-
         btn.disabled = true;
         btn.innerText = "⏳ Qo'shilmoqda...";
-        toast.className = "toast";
 
         const payload = {
             action: "add_teacher",
@@ -860,29 +850,27 @@
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(payload)
             });
-            const result = await res.json();
-
-            if (result.ok) {
+            const r = await res.json();
+            if (r.ok) {
                 toast.className = "toast success";
-                toast.innerText = `✅ ${payload.name} ustoz (${payload.class_name}) muvaffaqiyatli qo'shildi!`;
+                toast.innerText = `✅ ${payload.name} ustoz (${payload.class_name}) qo'shildi!`;
                 document.getElementById("addTeacherForm").reset();
                 document.getElementById("t_count").value = "30";
                 document.getElementById("t_days").value = "30";
                 loadTeachers();
             } else {
                 toast.className = "toast error";
-                toast.innerText = "❌ Xatolik: " + (result.error || "Ruxsat yo'q");
+                toast.innerText = "❌ Xatolik: " + (r.error || "Qo'shilmadi");
             }
         } catch (err) {
             toast.className = "toast error";
-            toast.innerText = "❌ Tarmoq xatosi: " + err.message;
+            toast.innerText = "❌ Xato: " + err.message;
         } finally {
             btn.disabled = false;
             btn.innerText = "⚡ Yangi Hisob Ochish va Faollashtirish";
         }
     });
 
-    // Avtomatik tekshiruvni ishga tushirish
     verifyRootAccess();
 </script>
 

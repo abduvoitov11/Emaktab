@@ -83,7 +83,7 @@ def find_excel_files(target_class=None):
     return [f for f in class_files if os.path.exists(f)] or [default_excel]
 
 
-def load_accounts(file_paths=None, target_class=None):
+def load_accounts(file_paths=None, target_class=None, target_login=None):
     if file_paths is None:
         file_paths = find_excel_files(target_class=target_class)
     elif isinstance(file_paths, str):
@@ -91,6 +91,8 @@ def load_accounts(file_paths=None, target_class=None):
 
     if target_class:
         target_class = target_class.strip().upper().replace(" ", "")
+    if target_login:
+        target_login = target_login.strip().lower()
 
     accounts = []
     seen_logins = set()
@@ -119,6 +121,9 @@ def load_accounts(file_paths=None, target_class=None):
                     l_str = str(login).strip()
                     if l_str in seen_logins:
                         continue
+                    if target_login and l_str.lower() != target_login:
+                        continue
+
                     sinf_name = str(sinf).strip().upper().replace(" ", "")
                     if target_class:
                         norm_target = target_class.replace("-", "")
@@ -267,9 +272,12 @@ async def run_local():
     os.makedirs(MEDIA_DIR, exist_ok=True)
 
     target_class = os.getenv("TARGET_CLASS")
+    target_login = os.getenv("TARGET_LOGIN")
     for arg in sys.argv[1:]:
         if arg.startswith("--class="):
             target_class = arg.split("=", 1)[1]
+        elif arg.startswith("--login="):
+            target_login = arg.split("=", 1)[1]
         elif arg.upper() in ["3D", "3-D", "9B", "9-B"]:
             target_class = arg
 
@@ -301,8 +309,14 @@ async def run_local():
 
     excel_files = find_excel_files(target_class=target_class)
     file_names = ", ".join([os.path.basename(f) for f in excel_files])
-    print(f"Excel fayllardan ma'lumotlar o'qilmoqda: {file_names} (Sinf filtri: {target_class or 'Barchasi'})...")
-    accounts = load_accounts(excel_files, target_class=target_class)
+    filter_desc = []
+    if target_class:
+        filter_desc.append(f"Sinf: {target_class}")
+    if target_login:
+        filter_desc.append(f"Login: {target_login}")
+    desc_str = ", ".join(filter_desc) if filter_desc else "Barchasi"
+    print(f"Excel fayllardan ma'lumotlar o'qilmoqda: {file_names} (Filtr: {desc_str})...")
+    accounts = load_accounts(excel_files, target_class=target_class, target_login=target_login)
     print(f"Jami {len(accounts)} ta hisob topildi. Dastur ishga tushmoqda...")
 
     async with async_playwright() as p:

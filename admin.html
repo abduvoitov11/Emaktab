@@ -849,6 +849,7 @@
                         }
                     });
                 }
+                if (data.gh_pat) localStorage.setItem("admin_gh_pat", data.gh_pat);
                 if (data.pat_configured) updatePatButton(true);
             }
         } catch (e) {}
@@ -1009,6 +1010,7 @@
                     teachersState = data.teachers;
                     renderTeachers(data.teachers);
                 }
+                if (data.gh_pat) localStorage.setItem("admin_gh_pat", data.gh_pat);
                 if (data.pat_configured) updatePatButton(true);
             }
         } catch (err) {

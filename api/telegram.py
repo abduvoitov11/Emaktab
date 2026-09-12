@@ -34,6 +34,64 @@ ADMIN_PHONE = "+998 94 091 12 19"
 ROOT_ID = int(config.ROOT_ID)
 
 TEACHERS_FILE = os.path.join(os.path.dirname(__file__), "..", "teachers.json")
+
+INCIDENTS_FILE = os.path.join(os.path.dirname(__file__), '..', 'security_incidents.json')
+
+def record_security_incident(user_id: int, name: str, username: str, command_text: str, incident_type: str = 'UNAUTHORIZED_ACCESS'):
+    """Haqiqiy xavfsizlik jurnaliga yozish va arxivlash"""
+    now_str = datetime.now(zoneinfo.ZoneInfo('Asia/Tashkent')).strftime('%Y-%m-%d %H:%M:%S')
+    incident = {
+        'id': f'INC-{int(datetime.now().timestamp())}',
+        'timestamp': now_str,
+        'user_id': user_id,
+        'name': name,
+        'username': username,
+        'type': incident_type,
+        'attempted_command': command_text
+    }
+    try:
+        data = []
+        if os.path.exists(INCIDENTS_FILE):
+            with open(INCIDENTS_FILE, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+        data.append(incident)
+        with open(INCIDENTS_FILE, 'w', encoding='utf-8') as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+            
+        # Agar GitHub PAT bo'lsa repoga ham push
+        if GITHUB_PAT:
+            try:
+                url = f'https://api.github.com/repos/{GITHUB_REPO}/contents/security_incidents.json'
+                headers = {
+                    'Authorization': f'token {GITHUB_PAT}',
+                    'Accept': 'application/vnd.github+json',
+                    'User-Agent': 'AvtoEmaktab-Security'
+                }
+                req = urllib.request.Request(url, headers=headers)
+                sha = None
+                try:
+                    with urllib.request.urlopen(req) as resp:
+                        if resp.status == 200:
+                            body = json.loads(resp.read().decode())
+                            sha = body.get('sha')
+                except Exception:
+                    pass
+                content_str = json.dumps(data, ensure_ascii=False, indent=2)
+                content_b64 = base64.b64encode(content_str.encode('utf-8')).decode('utf-8')
+                payload = {
+                    'message': f'security: record incident {incident["id"]} from user {user_id}',
+                    'content': content_b64
+                }
+                if sha:
+                    payload['sha'] = sha
+                put_req = urllib.request.Request(url, data=json.dumps(payload).encode(), headers=headers, method='PUT')
+                urllib.request.urlopen(put_req)
+            except Exception as e:
+                logger.error(f'Sync incidents error: {e}')
+    except Exception as ex:
+        logger.error(f'Error recording incident: {ex}')
+    return incident
+
 GITHUB_REPO = "abduvoitov11/Emaktab"
 # Agar Vercel env'da bo'lsa GitHub PAT o'qiladi (faylni repoda avto-yangilash uchun)
 GITHUB_PAT = os.getenv("GITHUB_PAT", "")
@@ -367,11 +425,21 @@ async def process_update(update_data: dict):
                 uname_str = f"@{user.username}" if (user and user.username) else "Mavjud emas"
                 now_str = datetime.now(zoneinfo.ZoneInfo("Asia/Tashkent")).strftime('%Y-%m-%d %H:%M:%S')
                 
-                # Begona shaxsga ogohlantirish
+                # Haqiqiy xavfsizlik jurnaliga qayd etish
+                inc = record_security_incident(user_id, name, uname_str, text, "UNAUTHORIZED_ADMIN_COMMAND")
+
+                # Begona shaxsga rasmiy ogohlantirish
                 await msg.reply_text(
-                    "⛔ <b>RUXSAT ETILMAGAN AMAL!</b>
+                    f"⛔ <b>RUXSAT ETILMAGAN AMAL!</b>
 "
-                    "Sizda administratorlik huquqi yo'q. Ushbu xatti-harakat va sizning ma'lumotlaringiz xavfsizlik jurnaliga qayd etildi.",
+                    f"Sizda administratorlik huquqi yo'q.
+
+"
+                    f"📌 <b>Qayd ID:</b> <code>#{inc['id']}</code>
+"
+                    f"⏱ <b>Qayd vaqti:</b> {inc['timestamp']}
+"
+                    f"Xatti-harakatingiz va profilingiz xavfsizlik jurnaliga qonuniy dalil sifatida muhrlandi.",
                     parse_mode=ParseMode.HTML
                 )
                 
@@ -513,6 +581,35 @@ async def process_update(update_data: dict):
                 else:
                     await msg.reply_text("Format: <code>/uzaytir &lt;TG_ID&gt; &lt;Kun&gt;</code>", parse_mode=ParseMode.HTML)
 
+            # Xavfsizlik jurnali komandasi
+            elif text.startswith("/xavfsizlik_jurnali") or text.startswith("/audit"):
+                incidents = []
+                if os.path.exists(INCIDENTS_FILE):
+                    try:
+                        with open(INCIDENTS_FILE, 'r', encoding='utf-8') as f:
+                            incidents = json.load(f)
+                    except Exception:
+                        pass
+                if not incidents:
+                    await msg.reply_text("🛡️ Xavfsizlik jurnali toza. Hech qanday shubhali holat qayd etilmagan.")
+                else:
+                    lines = [f"🛡️ <b>Xavfsizlik Jurnali ({len(incidents)} ta hodisa):</b>
+━━━━━━━━━━━━━━━━━━━━━"]
+                    # Oxirgi 10 ta hodisani chiqarish
+                    for item in incidents[-10:]:
+                        lines.append(
+                            f"📌 <b>#{item.get('id')}</b> | ⏱ {item.get('timestamp')}
+"
+                            f"👤 {item.get('name')} ({item.get('username')})
+"
+                            f"🆔 ID: <code>{item.get('user_id')}</code>
+"
+                            f"⌨️ Buyruq: <code>{item.get('attempted_command')}</code>"
+                        )
+                    await msg.reply_text("
+
+".join(lines), parse_mode=ParseMode.HTML)
+
             # 9. /ustozlar
             elif text.startswith("/ustozlar"):
                 teachers = load_teachers()
@@ -601,8 +698,9 @@ async def process_update(update_data: dict):
             if user_id != ROOT_ID:
                 uname_str = f"@{user.username}" if (user and user.username) else "Mavjud emas"
                 now_str = datetime.now(zoneinfo.ZoneInfo("Asia/Tashkent")).strftime('%Y-%m-%d %H:%M:%S')
+                inc = record_security_incident(user_id, name, uname_str, f"callback:{data}", "CALLBACK_TAMPERING")
                 alert_text = (
-                    f"🚨 <b>XAVFSIZLIK: CALLBACK ATTACK!</b>
+                    f"🚨 <b>XAVFSIZLIK: CALLBACK ATTACK (#{inc['id']})!</b>
 "
                     f"Begona foydalanuvchi Admin Panel tugmasini simulyatsiya qilib bosishga urindi!
 "

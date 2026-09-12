@@ -303,7 +303,8 @@ async def process_account(browser, bot: Bot, acc: dict):
 
     tashkent_tz = zoneinfo.ZoneInfo("Asia/Tashkent")
     now_check = datetime.now(tashkent_tz)
-    ignore_curfew = os.getenv("IGNORE_CURFEW", "false").lower() == "true"
+    force_run = os.getenv("FORCE_RUN", "false").lower() == "true"
+    ignore_curfew = os.getenv("IGNORE_CURFEW", "false").lower() == "true" or force_run
     if config.is_curfew_time(now_check) and not ignore_curfew:
         logger.warning(f"🛑 {login} uchun login bekor qilindi: Tungi taqiq (21:45 - 07:00) faol! ({now_check.strftime('%H:%M:%S')})")
         return False

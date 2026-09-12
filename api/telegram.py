@@ -11,7 +11,16 @@ from http.server import BaseHTTPRequestHandler
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
+from telegram import (
+    Update,
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    WebAppInfo,
+    KeyboardButton,
+    ReplyKeyboardMarkup,
+    ReplyKeyboardRemove,
+    KeyboardButtonRequestUsers
+)
 from telegram.constants import ParseMode
 from telegram.ext import Application
 
@@ -40,6 +49,39 @@ _teachers_cache_time = 0
 _schedule_cache = None
 _schedule_cache_time = 0
 CACHE_TTL = 3
+WIZARD_FILE = "/tmp/admin_wizard_state.json"
+
+def load_wizard_state(user_id: int) -> dict:
+    try:
+        if os.path.exists(WIZARD_FILE):
+            with open(WIZARD_FILE, "r", encoding="utf-8") as f:
+                states = json.load(f)
+                return states.get(str(user_id), {})
+    except Exception:
+        pass
+    return {}
+
+def save_wizard_state(user_id: int, state: dict):
+    try:
+        states = {}
+        if os.path.exists(WIZARD_FILE):
+            try:
+                with open(WIZARD_FILE, "r", encoding="utf-8") as f:
+                    states = json.load(f)
+            except Exception:
+                states = {}
+        if state:
+            states[str(user_id)] = state
+        else:
+            states.pop(str(user_id), None)
+        with open(WIZARD_FILE, "w", encoding="utf-8") as f:
+            json.dump(states, f, ensure_ascii=False)
+    except Exception:
+        pass
+
+def clear_wizard_state(user_id: int):
+    save_wizard_state(user_id, {})
+
 
 def get_active_gh_pat(passed_pat: str = None) -> str:
     if passed_pat and isinstance(passed_pat, str) and passed_pat.strip().startswith("ghp_"):
@@ -303,7 +345,10 @@ def get_main_keyboard(user_id: int) -> InlineKeyboardMarkup:
     ]
     if user_id == ROOT_ID:
         keyboard.append([InlineKeyboardButton("👑 Root Boshqaruv Paneli (Sayt)", web_app=WebAppInfo(url=ADMIN_PANEL_URL))])
-        keyboard.append([InlineKeyboardButton("⚙️ Ustozlar Ro'yxati (Botda)", callback_data="btn_admin_teachers")])
+        keyboard.append([
+            InlineKeyboardButton("➕ Yangi Ustoz Qo'shish", callback_data="btn_add_teacher"),
+            InlineKeyboardButton("⚙️ Ustozlar Ro'yxati", callback_data="btn_admin_teachers")
+        ])
 
     return InlineKeyboardMarkup(keyboard)
 
@@ -515,6 +560,149 @@ async def process_update(update_data: dict):
             await app.shutdown()
             return
 
+        if user_id == ROOT_ID and text.lower() in ["/cancel", "❌ bekor qilish", "bekor qilish"]:
+            clear_wizard_state(user_id)
+            await msg.reply_text("❌ Ustoz qo'shish bekor qilindi.", reply_markup=ReplyKeyboardRemove())
+            await app.shutdown()
+            return
+
+        if user_id == ROOT_ID:
+            wiz = load_wizard_state(user_id)
+            if wiz and wiz.get("step"):
+                step = wiz.get("step")
+                if step == "WAIT_USER":
+                    target_id = None
+                    target_name = ""
+                    if msg.users_shared and msg.users_shared.users:
+                        u = msg.users_shared.users[0]
+                        target_id = u.user_id
+                        target_name = (u.first_name or "") + (" " + u.last_name if u.last_name else "")
+                    elif msg.contact and msg.contact.user_id:
+                        target_id = msg.contact.user_id
+                        target_name = (msg.contact.first_name or "") + (" " + msg.contact.last_name if msg.contact.last_name else "")
+                    elif getattr(msg, "forward_from", None):
+                        target_id = msg.forward_from.id
+                        target_name = (msg.forward_from.first_name or "") + (" " + msg.forward_from.last_name if msg.forward_from.last_name else "")
+                    elif getattr(msg, "forward_origin", None) and getattr(msg.forward_origin, "sender_user", None):
+                        fu = msg.forward_origin.sender_user
+                        target_id = fu.id
+                        target_name = (fu.first_name or "") + (" " + fu.last_name if fu.last_name else "")
+                    elif text.isdigit() and len(text) >= 5:
+                        target_id = int(text)
+                        target_name = ""
+
+                    if target_id:
+                        wiz["step"] = "WAIT_NAME"
+                        wiz["target_id"] = target_id
+                        wiz["suggested_name"] = target_name.strip()
+                        save_wizard_state(user_id, wiz)
+
+                        prompt = (
+                            f"✅ <b>Ustoz tanlandi!</b>\n"
+                            f"🆔 Telegram ID: <code>{target_id}</code>\n"
+                        )
+                        if target_name.strip():
+                            prompt += f"👤 Telegramdagi nomi: <b>{target_name.strip()}</b>\n\n"
+                            prompt += f"2️⃣ Endi ustozning <b>Ismini</b> kiriting:\n<i>(Masalan: <code>{target_name.strip()}</code> yoki o'zingiz xohlagan ism)</i>"
+                        else:
+                            prompt += "\n2️⃣ Endi ustozning <b>Ismini</b> kiriting:\n<i>(Masalan: Zuhra yoki Muhayyo opa)</i>"
+
+                        await msg.reply_text(prompt, reply_markup=ReplyKeyboardRemove(), parse_mode=ParseMode.HTML)
+                        await app.shutdown()
+                        return
+                    else:
+                        await msg.reply_text(
+                            "❌ Ustoz aniqlanmadi. Iltimos, pastdagi tugmani bosib kontakt tanlang yoki ustozning Telegram ID raqamini yozing:",
+                            parse_mode=ParseMode.HTML
+                        )
+                        await app.shutdown()
+                        return
+
+                elif step == "WAIT_NAME" and text:
+                    wiz["name"] = text.strip()
+                    wiz["step"] = "WAIT_CLASS"
+                    save_wizard_state(user_id, wiz)
+                    await msg.reply_text(
+                        f"👤 Ustoz: <b>{wiz['name']}</b>\n\n"
+                        f"3️⃣ Endi ustozning <b>Sinf nomini</b> kiriting:\n"
+                        f"<i>(Masalan: <code>8-A</code> yoki <code>3-D</code>)</i>",
+                        parse_mode=ParseMode.HTML
+                    )
+                    await app.shutdown()
+                    return
+
+                elif step == "WAIT_CLASS" and text:
+                    wiz["class"] = text.strip().upper()
+                    wiz["step"] = "WAIT_COUNT"
+                    save_wizard_state(user_id, wiz)
+                    await msg.reply_text(
+                        f"🏫 Sinf: <b>{wiz['class']}</b>\n\n"
+                        f"4️⃣ Ushbu sinfdagi <b>O'quvchilar sonini</b> kiriting:\n"
+                        f"<i>(Masalan: <code>32</code> yoki <code>30</code>)</i>",
+                        parse_mode=ParseMode.HTML
+                    )
+                    await app.shutdown()
+                    return
+
+                elif step == "WAIT_COUNT" and text:
+                    if not text.isdigit() or int(text) <= 0:
+                        await msg.reply_text("❌ O'quvchilar sonini faqat musbat son shaklida kiriting (masalan: 32):")
+                        await app.shutdown()
+                        return
+                    wiz["students_count"] = int(text)
+                    wiz["step"] = "WAIT_DAYS"
+                    save_wizard_state(user_id, wiz)
+
+                    sub_kb = InlineKeyboardMarkup([
+                        [
+                            InlineKeyboardButton("📅 1 oy (30 kun)", callback_data="wiz_d:30"),
+                            InlineKeyboardButton("📅 2 oy (60 kun)", callback_data="wiz_d:60")
+                        ],
+                        [
+                            InlineKeyboardButton("📅 3 oy (90 kun)", callback_data="wiz_d:90"),
+                            InlineKeyboardButton("📅 1 yil (365 kun)", callback_data="wiz_d:365")
+                        ],
+                        [InlineKeyboardButton("❌ Bekor qilish", callback_data="wiz_cancel")]
+                    ])
+                    await msg.reply_text(
+                        f"👥 O'quvchilar soni: <b>{wiz['students_count']} ta</b>\n\n"
+                        f"5️⃣ <b>Obuna muddatini tanlang:</b>\n"
+                        f"<i>(Quyidagi tugmalardan birini bosing yoki o'zingiz istagan kun sonini yozib yuboring, masalan: <code>45</code>)</i>",
+                        reply_markup=sub_kb,
+                        parse_mode=ParseMode.HTML
+                    )
+                    await app.shutdown()
+                    return
+
+                elif step == "WAIT_DAYS" and text.isdigit() and int(text) > 0:
+                    days = int(text)
+                    today = datetime.now(zoneinfo.ZoneInfo("Asia/Tashkent")).date()
+                    exp_date = (today + timedelta(days=days)).strftime("%Y-%m-%d")
+                    wiz["days"] = days
+                    wiz["expires_at"] = exp_date
+                    wiz["step"] = "CONFIRM"
+                    save_wizard_state(user_id, wiz)
+
+                    confirm_kb = InlineKeyboardMarkup([
+                        [
+                            InlineKeyboardButton("✅ Tasdiqlash va Saqlash", callback_data="wiz_confirm"),
+                            InlineKeyboardButton("❌ Bekor qilish", callback_data="wiz_cancel")
+                        ]
+                    ])
+                    card = (
+                        f"📋 <b>YANGI USTOZ KARTASI:</b>\n"
+                        f"━━━━━━━━━━━━━━━━━━━━━\n"
+                        f"👤 <b>Ustoz:</b> {wiz.get('name')}\n"
+                        f"🆔 <b>Telegram ID:</b> <code>{wiz.get('target_id')}</code>\n"
+                        f"🏫 <b>Sinf:</b> <b>{wiz.get('class')}</b> ({wiz.get('students_count')} o'quvchi)\n"
+                        f"📅 <b>Obuna:</b> <b>{exp_date}</b> ({days} kun)\n"
+                        f"⚡ <b>Holati:</b> 🟢 Faol\n\n"
+                        f"Barcha ma'lumotlar to'g'rimi?"
+                    )
+                    await msg.reply_text(card, reply_markup=confirm_kb, parse_mode=ParseMode.HTML)
+                    await app.shutdown()
+                    return
+
         if text.startswith("/start") or text.startswith("/sayt"):
             await msg.reply_text(
                 text=get_welcome_text(name),
@@ -644,13 +832,33 @@ async def process_update(update_data: dict):
                     except Exception as ex:
                         logger.warning(f"Could not notify teacher {target_id}: {ex}")
                 else:
-                    help_qosh = (
-                        "ℹ️ <b>Yangi hisob qo'shish formati:</b>\n"
-                        "<code>/qosh &lt;TG_ID&gt; &lt;Ism&gt; &lt;Sinf&gt; &lt;Oquvchilar_Soni&gt; &lt;Kun&gt;</code>\n\n"
-                        "<b>Misol:</b>\n"
-                        "<code>/qosh 896459615 Zuhra 9-B 34 30</code>"
+                    kb = ReplyKeyboardMarkup(
+                        [
+                            [
+                                KeyboardButton(
+                                    text="👤 Ustozni kontaktlardan tanlash",
+                                    request_users=KeyboardButtonRequestUsers(
+                                        request_id=1,
+                                        max_quantity=1,
+                                        request_name=True,
+                                        request_username=True
+                                    )
+                                )
+                            ],
+                            [KeyboardButton(text="❌ Bekor qilish")]
+                        ],
+                        resize_keyboard=True,
+                        one_time_keyboard=True
                     )
-                    await msg.reply_text(help_qosh, parse_mode=ParseMode.HTML)
+                    save_wizard_state(user_id, {"step": "WAIT_USER"})
+                    await msg.reply_text(
+                        "➕ <b>Yangi ustoz qo'shish ustaxonasi:</b>\n"
+                        "━━━━━━━━━━━━━━━━━━━━━\n"
+                        "1️⃣ Pastdagi <b>«👤 Ustozni kontaktlardan tanlash»</b> tugmasini bosing va o'z kontaktlaringiz orasidan ustozni tanlang.\n\n"
+                        "<i>(Shuningdek, ustoz kontaktini yuborishingiz, xabarini forward qilishingiz yoki Telegram ID raqamini to'g'ridan-to'g'ri yozib yuborishingiz ham mumkin).</i>",
+                        reply_markup=kb,
+                        parse_mode=ParseMode.HTML
+                    )
 
             elif text.startswith("/uzaytir"):
                 parts = text.split()
@@ -831,6 +1039,138 @@ async def process_update(update_data: dict):
                 reply_markup=get_back_keyboard(),
                 parse_mode=ParseMode.HTML
             )
+
+        elif data == "btn_add_teacher":
+            if user_id != ROOT_ID:
+                await query.answer("⛔ Ruxsat yo'q!", show_alert=True)
+                await app.shutdown()
+                return
+            kb = ReplyKeyboardMarkup(
+                [
+                    [
+                        KeyboardButton(
+                            text="👤 Ustozni kontaktlardan tanlash",
+                            request_users=KeyboardButtonRequestUsers(
+                                request_id=1,
+                                max_quantity=1,
+                                request_name=True,
+                                request_username=True
+                            )
+                        )
+                    ],
+                    [KeyboardButton(text="❌ Bekor qilish")]
+                ],
+                resize_keyboard=True,
+                one_time_keyboard=True
+            )
+            save_wizard_state(user_id, {"step": "WAIT_USER"})
+            await app.bot.send_message(
+                chat_id=user_id,
+                text=(
+                    "➕ <b>Yangi ustoz qo'shish ustaxonasi:</b>\n"
+                    "━━━━━━━━━━━━━━━━━━━━━\n"
+                    "1️⃣ Pastdagi <b>«👤 Ustozni kontaktlardan tanlash»</b> tugmasini bosing va o'z kontaktlaringiz orasidan ustozni tanlang.\n\n"
+                    "<i>(Shuningdek, ustoz kontaktini yuborishingiz, xabarini forward qilishingiz yoki Telegram ID raqamini to'g'ridan-to'g'ri yozib yuborishingiz ham mumkin).</i>"
+                ),
+                reply_markup=kb,
+                parse_mode=ParseMode.HTML
+            )
+
+        elif data.startswith("wiz_d:"):
+            if user_id != ROOT_ID:
+                await query.answer("⛔ Ruxsat yo'q!", show_alert=True)
+                await app.shutdown()
+                return
+            days = int(data.split(":")[1])
+            wiz = load_wizard_state(user_id)
+            if not wiz:
+                await query.answer("Sessiya muddati tugagan. Qaytadan /qosh buyrug'ini bering.", show_alert=True)
+                await app.shutdown()
+                return
+            today = datetime.now(zoneinfo.ZoneInfo("Asia/Tashkent")).date()
+            exp_date = (today + timedelta(days=days)).strftime("%Y-%m-%d")
+            wiz["days"] = days
+            wiz["expires_at"] = exp_date
+            wiz["step"] = "CONFIRM"
+            save_wizard_state(user_id, wiz)
+
+            confirm_kb = InlineKeyboardMarkup([
+                [
+                    InlineKeyboardButton("✅ Tasdiqlash va Saqlash", callback_data="wiz_confirm"),
+                    InlineKeyboardButton("❌ Bekor qilish", callback_data="wiz_cancel")
+                ]
+            ])
+            card = (
+                f"📋 <b>YANGI USTOZ KARTASI:</b>\n"
+                f"━━━━━━━━━━━━━━━━━━━━━\n"
+                f"👤 <b>Ustoz:</b> {wiz.get('name')}\n"
+                f"🆔 <b>Telegram ID:</b> <code>{wiz.get('target_id')}</code>\n"
+                f"🏫 <b>Sinf:</b> <b>{wiz.get('class')}</b> ({wiz.get('students_count')} o'quvchi)\n"
+                f"📅 <b>Obuna:</b> <b>{exp_date}</b> ({days} kun)\n"
+                f"⚡ <b>Holati:</b> 🟢 Faol\n\n"
+                f"Barcha ma'lumotlar to'g'rimi?"
+            )
+            await query.edit_message_text(card, reply_markup=confirm_kb, parse_mode=ParseMode.HTML)
+
+        elif data == "wiz_confirm":
+            if user_id != ROOT_ID:
+                await query.answer("⛔ Ruxsat yo'q!", show_alert=True)
+                await app.shutdown()
+                return
+            wiz = load_wizard_state(user_id)
+            if not wiz or "target_id" not in wiz:
+                await query.answer("Sessiya muddati tugagan. Qaytadan /qosh buyrug'ini bering.", show_alert=True)
+                await app.shutdown()
+                return
+            target_id = str(wiz.get("target_id"))
+            t_name = wiz.get("name")
+            t_class = wiz.get("class")
+            t_count = wiz.get("students_count", 0)
+            exp_date = wiz.get("expires_at")
+            days = wiz.get("days", 30)
+
+            teachers = load_teachers()
+            teachers[target_id] = {
+                "name": t_name,
+                "class": t_class,
+                "students_count": t_count,
+                "expires_at": exp_date,
+                "status": "active"
+            }
+            save_teachers_locally(teachers)
+            sync_file_to_github("teachers.json", teachers, f"feat(billing): add teacher {t_name} ({t_class})")
+            clear_wizard_state(user_id)
+
+            success_card = (
+                f"🎉 <b>Yangi ustoz muvaffaqiyatli saqlandi va ulandi!</b>\n"
+                f"━━━━━━━━━━━━━━━━━━━━━\n"
+                f"👤 <b>Ustoz:</b> {t_name}\n"
+                f"🆔 <b>Telegram ID:</b> <code>{target_id}</code>\n"
+                f"🏫 <b>Sinf:</b> {t_class} ({t_count} o'quvchi)\n"
+                f"📅 <b>Obuna muddati:</b> {exp_date} ({days} kun)\n"
+                f"⚡ <b>Holati:</b> 🟢 Faol (monitoringga kiritildi)"
+            )
+            await query.edit_message_text(success_card, reply_markup=get_back_keyboard(), parse_mode=ParseMode.HTML)
+
+            try:
+                await app.bot.send_message(
+                    chat_id=int(target_id),
+                    text=(
+                        f"🎉 <b>Assalomu alaykum, {t_name} ustoz!</b>\n"
+                        f"━━━━━━━━━━━━━━━━━━━━━\n"
+                        f"Sizning <b>{t_class}</b> sinfingiz uchun AvtoEmaktab monitoring xizmati faollashtirildi!\n\n"
+                        f"📅 <b>Amal qilish muddati:</b> {exp_date} gacha ({days} kun)\n"
+                        f"👥 <b>O'quvchilar soni:</b> {t_count} ta\n\n"
+                        f"O'z hisobingiz va monitoring holatini ko'rish uchun: /kabinet"
+                    ),
+                    parse_mode=ParseMode.HTML
+                )
+            except Exception as ex:
+                logger.warning(f"Could not notify teacher {target_id}: {ex}")
+
+        elif data == "wiz_cancel":
+            clear_wizard_state(user_id)
+            await query.edit_message_text("❌ Ustoz qo'shish bekor qilindi.", reply_markup=get_back_keyboard())
 
     await app.shutdown()
 

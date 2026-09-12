@@ -185,8 +185,7 @@ async def admin_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
     keyboard = [
         [
-            InlineKeyboardButton("💬 Adminga Yozish", url=f"https://t.me/{ADMIN_USERNAME}"),
-            InlineKeyboardButton("📞 Qo'ng'iroq", url=f"tel:+998940911219")
+            InlineKeyboardButton("💬 Adminga Yozish", url=f"https://t.me/{ADMIN_USERNAME}")
         ],
         [
             InlineKeyboardButton("◀️ Asosiy Menyu", callback_data="btn_main_menu")

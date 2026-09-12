@@ -206,10 +206,11 @@ async def process_update(update_data: dict):
             )
             keyboard = [
                 [
-                    InlineKeyboardButton("💬 Adminga Yozish", url=f"https://t.me/{ADMIN_USERNAME}"),
-                    InlineKeyboardButton("📞 Qo'ng'iroq", url="tel:+998940911219")
+                    InlineKeyboardButton("💬 Adminga Yozish", url=f"https://t.me/{ADMIN_USERNAME}")
                 ],
-                [InlineKeyboardButton("◀️ Asosiy Menyu", callback_data="btn_main_menu")]
+                [
+                    InlineKeyboardButton("◀️ Asosiy Menyu", callback_data="btn_main_menu")
+                ]
             ]
             await msg.reply_text(
                 text=admin_text,

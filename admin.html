@@ -629,6 +629,8 @@
                 <button class="btn-refresh" onclick="loadTeachers(false)">🔄 Yangilash</button>
             </h2>
 
+            <button class="btn-primary" style="margin: 8px 0; width: 100%; background: #1f6feb; border-color: #388bfd;" onclick="sendBroadcastMessage()">📢 Barcha Ustozlarga Xabar Yuborish (Broadcast)</button>
+
                         <div class="stats-row" style="display:flex; justify-content:space-around; margin:10px 0; font-size:12px; color:#8b949e; background:#090d13; padding:10px; border-radius:8px; border:1px solid rgba(48,54,61,0.6);">
                 <span>👥 Jami: <b id="cntTotal" style="color:#f0f6fc;">0</b></span>
                 <span>🟢 Faol: <b id="cntActive" style="color:#3fb950;">0</b></span>
@@ -979,6 +981,7 @@
                     <button class="btn-action extend" onclick="modifySubscription('${uid}', 'extend', 15)">➕ 15 kun</button>
                     <button class="btn-action extend" onclick="modifySubscription('${uid}', 'extend', 30)">➕ 30 kun</button>
                     <button class="btn-action extend" onclick="modifySubscription('${uid}', 'extend', 90)">➕ 3 oy</button>
+                    <button class="btn-action" style="border-color: rgba(88, 166, 255, 0.4); color: #58a6ff;" onclick="sendSingleTeacherMessage('${uid}', '${t.name}')">✉️ Xabar</button>
                     ${t.status === 'paused' 
                         ? `<button class="btn-action" onclick="modifySubscription('${uid}', 'resume')">▶️ Faollashtirish</button>`
                         : `<button class="btn-action pause" onclick="modifySubscription('${uid}', 'pause')">⏸️ Muzlatish</button>`
@@ -1113,6 +1116,60 @@
             }
         } catch (e) {
             showToast("❌ Xato: " + e.message, "error");
+        }
+    }
+
+    async function sendSingleTeacherMessage(telegramId, teacherName) {
+        const text = prompt(`${teacherName} ustozga yubormoqchi bo'lgan xabaringiz matnini kiriting:`);
+        if (!text || !text.trim()) return;
+        showToast("Xabar yuborilmoqda...", "info");
+        try {
+            const resp = await fetch(API_BASE, {
+                method: "POST",
+                headers: getApiHeaders(),
+                body: JSON.stringify({
+                    action: "send_teacher_message",
+                    root_id: ROOT_ID,
+                    telegram_id: telegramId,
+                    message_text: text.trim(),
+                    gh_pat: getSavedPat()
+                })
+            });
+            const data = await resp.json();
+            if (data.ok) {
+                showToast(`✅ Xabar ${teacherName} ustozga yetkazildi!`, "success");
+            } else {
+                showToast(`❌ Xatolik: ${data.error || 'Yuborib bo‘lmadi'}`, "error");
+            }
+        } catch (e) {
+            showToast("❌ Serverga ulanishda xatolik!", "error");
+        }
+    }
+
+    async function sendBroadcastMessage() {
+        const text = prompt("Barcha ustozlarga yuboriladigan e'lon/xabar matnini kiriting:");
+        if (!text || !text.trim()) return;
+        if (!confirm("Ushbu xabar barcha ro'yxatdan o'tgan ustozlarga birdaniga yuboriladi. Tasdiqlaysizmi?")) return;
+        showToast("Barcha ustozlarga xabar yuborilmoqda...", "info");
+        try {
+            const resp = await fetch(API_BASE, {
+                method: "POST",
+                headers: getApiHeaders(),
+                body: JSON.stringify({
+                    action: "broadcast_message",
+                    root_id: ROOT_ID,
+                    message_text: text.trim(),
+                    gh_pat: getSavedPat()
+                })
+            });
+            const data = await resp.json();
+            if (data.ok) {
+                showToast(`📢 Xabar ${data.sent} ta ustozga yetkazildi!`, "success");
+            } else {
+                showToast(`❌ Xatolik: ${data.error || 'Yuborib bo‘lmadi'}`, "error");
+            }
+        } catch (e) {
+            showToast("❌ Serverga ulanishda xatolik!", "error");
         }
     }
 

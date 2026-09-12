@@ -6,6 +6,7 @@ import asyncio
 import zoneinfo
 import urllib.request
 import base64
+import html
 from datetime import datetime, timedelta
 from http.server import BaseHTTPRequestHandler
 
@@ -357,6 +358,9 @@ def get_main_keyboard(user_id: int) -> InlineKeyboardMarkup:
             InlineKeyboardButton("➕ Yangi Ustoz Qo'shish", callback_data="btn_add_teacher"),
             InlineKeyboardButton("⚙️ Ustozlar Ro'yxati", callback_data="btn_admin_teachers")
         ])
+        keyboard.append([
+            InlineKeyboardButton("📢 Ustozlarga Xabar Yuborish", callback_data="btn_msg_menu")
+        ])
 
     return InlineKeyboardMarkup(keyboard)
 
@@ -570,7 +574,8 @@ async def process_update(update_data: dict):
 
         if user_id == ROOT_ID and text.lower() in ["/cancel", "❌ bekor qilish", "bekor qilish"]:
             clear_wizard_state(user_id)
-            await msg.reply_text("❌ Ustoz qo'shish bekor qilindi.", reply_markup=ReplyKeyboardRemove())
+            await msg.reply_text("❌ Bekor qilindi.", reply_markup=ReplyKeyboardRemove())
+            await msg.reply_text("Asosiy menyu:", reply_markup=get_main_keyboard(user_id))
             await app.shutdown()
             return
 
@@ -711,6 +716,191 @@ async def process_update(update_data: dict):
                     await app.shutdown()
                     return
 
+                elif step == "MSG_WAIT_TARGET":
+                    target_id = None
+                    target_name = ""
+                    if msg.users_shared and msg.users_shared.users:
+                        u = msg.users_shared.users[0]
+                        target_id = u.user_id
+                        target_name = (u.first_name or "") + (" " + u.last_name if u.last_name else "")
+                    elif msg.contact and msg.contact.user_id:
+                        target_id = msg.contact.user_id
+                        target_name = (msg.contact.first_name or "") + (" " + msg.contact.last_name if msg.contact.last_name else "")
+                    elif getattr(msg, "forward_from", None):
+                        target_id = msg.forward_from.id
+                        target_name = (msg.forward_from.first_name or "") + (" " + msg.forward_from.last_name if msg.forward_from.last_name else "")
+                    elif getattr(msg, "forward_origin", None) and getattr(msg.forward_origin, "sender_user", None):
+                        fu = msg.forward_origin.sender_user
+                        target_id = fu.id
+                        target_name = (fu.first_name or "") + (" " + fu.last_name if fu.last_name else "")
+                    elif text.isdigit() and len(text) >= 5:
+                        target_id = int(text)
+
+                    if target_id:
+                        teachers = load_teachers()
+                        t = teachers.get(str(target_id), {})
+                        t_name = t.get("name", target_name.strip() or "Ustoz")
+                        t_cls = t.get("class", "")
+                        save_wizard_state(user_id, {
+                            "step": "MSG_WAIT_TEXT_SINGLE",
+                            "target_uid": str(target_id),
+                            "target_name": t_name,
+                            "target_class": t_cls
+                        })
+                        cancel_kb = ReplyKeyboardMarkup(
+                            [[KeyboardButton(text="❌ Bekor qilish")]],
+                            resize_keyboard=True,
+                            one_time_keyboard=True
+                        )
+                        await msg.reply_text(
+                            f"🎯 <b>Tanlangan ustoz:</b> {t_name}" + (f" ({t_cls})" if t_cls else "") + f"\n"
+                            f"🆔 <b>Telegram ID:</b> <code>{target_id}</code>\n"
+                            f"━━━━━━━━━━━━━━━━━━━━━\n"
+                            f"Ushbu ustozga yubormoqchi bo'lgan <b>xabaringizni yuboring</b> (matn, rasm, video yoki fayl):\n\n"
+                            f"<i>(Bekor qilish uchun «❌ Bekor qilish» yoki /cancel deb yozing)</i>",
+                            reply_markup=cancel_kb,
+                            parse_mode=ParseMode.HTML
+                        )
+                        await app.shutdown()
+                        return
+                    else:
+                        await msg.reply_text("❌ Ustoz aniqlanmadi. Iltimos, kontakt tanlang yoki ustoz ID sini yozing:")
+                        await app.shutdown()
+                        return
+
+                elif step == "MSG_WAIT_TEXT_SINGLE":
+                    target_uid = int(wiz["target_uid"])
+                    target_name = wiz.get("target_name", "Ustoz")
+                    target_cls = wiz.get("target_class", "")
+                    delivered = False
+                    err_msg = ""
+                    try:
+                        if msg.text:
+                            body = (
+                                f"📩 <b>AvtoEmaktab Administratsiyasi:</b>\n"
+                                f"━━━━━━━━━━━━━━━━━━━━━\n"
+                                f"Hurmatli <b>{target_name}</b> ustoz!\n\n"
+                                f"{html.escape(msg.text)}"
+                            )
+                            await app.bot.send_message(chat_id=target_uid, text=body, parse_mode=ParseMode.HTML)
+                            delivered = True
+                        else:
+                            caption = msg.caption or ""
+                            formatted_cap = (
+                                f"📩 <b>AvtoEmaktab Administratsiyasi:</b>\n"
+                                f"━━━━━━━━━━━━━━━━━━━━━\n"
+                                f"Hurmatli <b>{target_name}</b> ustoz!\n\n"
+                                f"{html.escape(caption)}"
+                            ) if caption else (
+                                f"📩 <b>AvtoEmaktab Administratsiyasi:</b>\n"
+                                f"━━━━━━━━━━━━━━━━━━━━━\n"
+                                f"Hurmatli <b>{target_name}</b> ustoz!"
+                            )
+                            await app.bot.copy_message(
+                                chat_id=target_uid,
+                                from_chat_id=user_id,
+                                message_id=msg.message_id,
+                                caption=formatted_cap,
+                                parse_mode=ParseMode.HTML
+                            )
+                            delivered = True
+                    except Exception as e:
+                        err_msg = str(e)
+                        logger.error(f"Error sending single message to {target_uid}: {e}")
+
+                    clear_wizard_state(user_id)
+                    if delivered:
+                        await msg.reply_text(
+                            f"✅ <b>Xabar muvaffaqiyatli yetkazildi!</b>\n"
+                            f"━━━━━━━━━━━━━━━━━━━━━\n"
+                            f"👤 <b>Qabul qiluvchi:</b> {target_name}" + (f" ({target_cls})" if target_cls else "") + f"\n"
+                            f"🆔 <b>Telegram ID:</b> <code>{target_uid}</code>",
+                            reply_markup=ReplyKeyboardRemove(),
+                            parse_mode=ParseMode.HTML
+                        )
+                    else:
+                        await msg.reply_text(
+                            f"❌ <b>Xabar yetkazilmadi!</b>\n"
+                            f"━━━━━━━━━━━━━━━━━━━━━\n"
+                            f"Sabab: {html.escape(err_msg)}\n"
+                            f"<i>(Foydalanuvchi botni bloklagan yoki ID noto'g'ri bo'lishi mumkin)</i>",
+                            reply_markup=ReplyKeyboardRemove(),
+                            parse_mode=ParseMode.HTML
+                        )
+                    await msg.reply_text("Asosiy menyu:", reply_markup=get_main_keyboard(user_id))
+                    await app.shutdown()
+                    return
+
+                elif step == "MSG_WAIT_TEXT_ALL":
+                    teachers = load_teachers()
+                    total_count = len(teachers)
+                    success_count = 0
+                    fail_count = 0
+                    failed_names = []
+
+                    status_msg = await msg.reply_text(
+                        f"⏳ <b>Xabar barcha ustozlarga yuborilmoqda...</b> (0/{total_count})",
+                        parse_mode=ParseMode.HTML
+                    )
+
+                    for uid_str, t_info in teachers.items():
+                        try:
+                            t_uid = int(uid_str)
+                            t_name = t_info.get("name", "Ustoz")
+                            if msg.text:
+                                body = (
+                                    f"📢 <b>RASMIY E'LON / XABARNOMA</b>\n"
+                                    f"━━━━━━━━━━━━━━━━━━━━━\n"
+                                    f"Hurmatli <b>{t_name}</b> ustoz!\n\n"
+                                    f"{html.escape(msg.text)}"
+                                )
+                                await app.bot.send_message(chat_id=t_uid, text=body, parse_mode=ParseMode.HTML)
+                            else:
+                                caption = msg.caption or ""
+                                formatted_cap = (
+                                    f"📢 <b>RASMIY E'LON / XABARNOMA</b>\n"
+                                    f"━━━━━━━━━━━━━━━━━━━━━\n"
+                                    f"Hurmatli <b>{t_name}</b> ustoz!\n\n"
+                                    f"{html.escape(caption)}"
+                                ) if caption else (
+                                    f"📢 <b>RASMIY E'LON / XABARNOMA</b>\n"
+                                    f"━━━━━━━━━━━━━━━━━━━━━\n"
+                                    f"Hurmatli <b>{t_name}</b> ustoz!"
+                                )
+                                await app.bot.copy_message(
+                                    chat_id=t_uid,
+                                    from_chat_id=user_id,
+                                    message_id=msg.message_id,
+                                    caption=formatted_cap,
+                                    parse_mode=ParseMode.HTML
+                                )
+                            success_count += 1
+                        except Exception as e:
+                            fail_count += 1
+                            failed_names.append(f"{t_info.get('name', uid_str)}")
+                            logger.warning(f"Broadcast failed for {uid_str}: {e}")
+
+                    clear_wizard_state(user_id)
+                    res_text = (
+                        f"📊 <b>Broadcast xabarnoma yakunlandi!</b>\n"
+                        f"━━━━━━━━━━━━━━━━━━━━━\n"
+                        f"✅ <b>Yetkazildi:</b> {success_count} ta ustozga\n"
+                        f"❌ <b>Yetkazilmadi:</b> {fail_count} ta ustozga\n"
+                        f"👥 <b>Jami ustozlar:</b> {total_count} nafar\n"
+                    )
+                    if failed_names:
+                        res_text += "\n<i>Yetkazilmaganlar: " + html.escape(", ".join(failed_names[:5])) + "</i>"
+
+                    try:
+                        await status_msg.delete()
+                    except Exception:
+                        pass
+
+                    await msg.reply_text(res_text, reply_markup=ReplyKeyboardRemove(), parse_mode=ParseMode.HTML)
+                    await msg.reply_text("Asosiy menyu:", reply_markup=get_main_keyboard(user_id))
+                    await app.shutdown()
+                    return
+
         if text.startswith("/start") or text.startswith("/sayt"):
             await msg.reply_text(
                 text=get_welcome_text(name),
@@ -757,7 +947,7 @@ async def process_update(update_data: dict):
                 parse_mode=ParseMode.HTML
             )
 
-        elif any(text.startswith(cmd) for cmd in ["/qosh", "/uzaytir", "/ochir", "/ustozlar", "/xavfsizlik_jurnali", "/audit", "/boshlash", "/run"]):
+        elif any(text.startswith(cmd) for cmd in ["/qosh", "/uzaytir", "/ochir", "/ustozlar", "/xavfsizlik_jurnali", "/audit", "/boshlash", "/run", "/xabar", "/broadcast"]):
             if user_id != ROOT_ID:
                 inc = record_security_incident(user_id, name, uname_str, text, "UNAUTHORIZED_ADMIN_COMMAND")
                 await msg.reply_text(
@@ -984,6 +1174,47 @@ async def process_update(update_data: dict):
                 except Exception as ex:
                     await msg.reply_text(f"❌ Xato: {ex}")
 
+            elif text.startswith("/xabar"):
+                kb = InlineKeyboardMarkup([
+                    [InlineKeyboardButton("🎯 Aniq bir ustozga", callback_data="btn_msg_single")],
+                    [InlineKeyboardButton("📢 Hammaga (Broadcast)", callback_data="btn_msg_all")],
+                    [InlineKeyboardButton("◀️ Asosiy Menyu", callback_data="btn_main_menu")]
+                ])
+                teachers = load_teachers()
+                t_count = len(teachers)
+                text_menu = (
+                    "📢 <b>Ustozlarga Xabar Yuborish Bo'limi:</b>\n"
+                    "━━━━━━━━━━━━━━━━━━━━━\n"
+                    f"👥 Tizimda jami <b>{t_count} nafar</b> ustoz ro'yxatdan o'tgan.\n\n"
+                    "Qaysi usulda xabar yubormoqchisiz?\n\n"
+                    "1️⃣ <b>Aniq bir ustozga</b> — Ro'yxatdan yoki kontaktlardan bitta ustozni tanlab shaxsiy xabar yuborish.\n"
+                    "2️⃣ <b>Hammaga (Broadcast)</b> — Barcha ulangan ustozlarga birdaniga umumiy e'lon/xabarnoma yuborish."
+                )
+                await msg.reply_text(text=text_menu, reply_markup=kb, parse_mode=ParseMode.HTML)
+                await app.shutdown()
+                return
+
+            elif text.startswith("/broadcast"):
+                teachers = load_teachers()
+                t_count = len(teachers)
+                save_wizard_state(user_id, {"step": "MSG_WAIT_TEXT_ALL"})
+                cancel_kb = ReplyKeyboardMarkup(
+                    [[KeyboardButton(text="❌ Bekor qilish")]],
+                    resize_keyboard=True,
+                    one_time_keyboard=True
+                )
+                await msg.reply_text(
+                    f"📢 <b>Barcha ustozlarga xabar yuborish (Broadcast):</b>\n"
+                    f"━━━━━━━━━━━━━━━━━━━━━\n"
+                    f"👥 Ro'yxatda jami <b>{t_count} nafar</b> ustoz mavjud.\n\n"
+                    f"Barcha ustozlarga yetkazilishi kerak bo'lgan <b>xabaringizni yuboring</b> (matn, rasm, video yoki fayl):\n\n"
+                    f"<i>(Bekor qilish uchun «❌ Bekor qilish» yoki /cancel deb yozing)</i>",
+                    reply_markup=cancel_kb,
+                    parse_mode=ParseMode.HTML
+                )
+                await app.shutdown()
+                return
+
     elif update.callback_query:
         query = update.callback_query
         user = update.effective_user
@@ -1203,6 +1434,148 @@ async def process_update(update_data: dict):
                 )
             except Exception as ex:
                 logger.warning(f"Could not notify teacher {target_id}: {ex}")
+
+        elif data == "btn_msg_menu":
+            if user_id != ROOT_ID:
+                await query.answer("⛔ Ruxsat yo'q!", show_alert=True)
+                await app.shutdown()
+                return
+            teachers = load_teachers()
+            t_count = len(teachers)
+            kb = InlineKeyboardMarkup([
+                [InlineKeyboardButton("🎯 Aniq bir ustozga", callback_data="btn_msg_single")],
+                [InlineKeyboardButton("📢 Hammaga (Broadcast)", callback_data="btn_msg_all")],
+                [InlineKeyboardButton("◀️ Asosiy Menyu", callback_data="btn_main_menu")]
+            ])
+            text_menu = (
+                "📢 <b>Ustozlarga Xabar Yuborish Bo'limi:</b>\n"
+                "━━━━━━━━━━━━━━━━━━━━━\n"
+                f"👥 Tizimda jami <b>{t_count} nafar</b> ustoz ro'yxatdan o'tgan.\n\n"
+                "Qaysi usulda xabar yubormoqchisiz?\n\n"
+                "1️⃣ <b>Aniq bir ustozga</b> — Ro'yxatdan yoki kontaktlardan bitta ustozni tanlab shaxsiy xabar yuborish.\n"
+                "2️⃣ <b>Hammaga (Broadcast)</b> — Barcha ulangan ustozlarga birdaniga umumiy e'lon/xabarnoma yuborish."
+            )
+            await query.edit_message_text(text=text_menu, reply_markup=kb, parse_mode=ParseMode.HTML)
+
+        elif data == "btn_msg_single":
+            if user_id != ROOT_ID:
+                await query.answer("⛔ Ruxsat yo'q!", show_alert=True)
+                await app.shutdown()
+                return
+            teachers = load_teachers()
+            if not teachers:
+                await query.answer("Ustozlar ro'yxati bo'sh!", show_alert=True)
+                await app.shutdown()
+                return
+
+            buttons = []
+            for uid, t in teachers.items():
+                t_name = t.get("name", "Ustoz")
+                t_cls = t.get("class", "")
+                buttons.append([InlineKeyboardButton(f"👤 {t_name} ({t_cls})", callback_data=f"msg_to:{uid}")])
+            buttons.append([InlineKeyboardButton("◀️ Orqaga", callback_data="btn_msg_menu")])
+
+            req_kb = ReplyKeyboardMarkup(
+                [
+                    [
+                        KeyboardButton(
+                            text="👤 Ustozni kontaktlardan tanlash",
+                            request_users=KeyboardButtonRequestUsers(
+                                request_id=2,
+                                max_quantity=1,
+                                request_name=True,
+                                request_username=True
+                            )
+                        )
+                    ],
+                    [KeyboardButton(text="❌ Bekor qilish")]
+                ],
+                resize_keyboard=True,
+                one_time_keyboard=True
+            )
+            save_wizard_state(user_id, {"step": "MSG_WAIT_TARGET"})
+            await app.bot.send_message(
+                chat_id=user_id,
+                text=(
+                    "🎯 <b>Xabar yuborish uchun ustozni tanlang:</b>\n"
+                    "━━━━━━━━━━━━━━━━━━━━━\n"
+                    "Quyidagi ro'yxatdan ustozni tanlang, «👤 Ustozni kontaktlardan tanlash» tugmasi orqali tanlang yoki uning Telegram ID raqamini yozing:"
+                ),
+                reply_markup=req_kb,
+                parse_mode=ParseMode.HTML
+            )
+            await query.edit_message_text(
+                text="📋 <b>Ro'yxatdagi ustozlar:</b>",
+                reply_markup=InlineKeyboardMarkup(buttons),
+                parse_mode=ParseMode.HTML
+            )
+
+        elif data.startswith("msg_to:"):
+            if user_id != ROOT_ID:
+                await query.answer("⛔ Ruxsat yo'q!", show_alert=True)
+                await app.shutdown()
+                return
+            target_uid = data.split(":", 1)[1]
+            teachers = load_teachers()
+            t = teachers.get(target_uid, {})
+            target_name = t.get("name", "Ustoz")
+            target_cls = t.get("class", "")
+
+            save_wizard_state(user_id, {
+                "step": "MSG_WAIT_TEXT_SINGLE",
+                "target_uid": target_uid,
+                "target_name": target_name,
+                "target_class": target_cls
+            })
+            cancel_kb = ReplyKeyboardMarkup(
+                [[KeyboardButton(text="❌ Bekor qilish")]],
+                resize_keyboard=True,
+                one_time_keyboard=True
+            )
+            await app.bot.send_message(
+                chat_id=user_id,
+                text=(
+                    f"🎯 <b>Tanlangan ustoz:</b> {target_name}" + (f" ({target_cls})" if target_cls else "") + f"\n"
+                    f"🆔 <b>Telegram ID:</b> <code>{target_uid}</code>\n"
+                    f"━━━━━━━━━━━━━━━━━━━━━\n"
+                    f"Ushbu ustozga yubormoqchi bo'lgan <b>xabaringizni yuboring</b> (matn, rasm, video yoki fayl):\n\n"
+                    f"<i>(Bekor qilish uchun «❌ Bekor qilish» yoki /cancel deb yozing)</i>"
+                ),
+                reply_markup=cancel_kb,
+                parse_mode=ParseMode.HTML
+            )
+            await query.answer()
+
+        elif data == "btn_msg_all":
+            if user_id != ROOT_ID:
+                await query.answer("⛔ Ruxsat yo'q!", show_alert=True)
+                await app.shutdown()
+                return
+            teachers = load_teachers()
+            t_count = len(teachers)
+            if t_count == 0:
+                await query.answer("Ustozlar ro'yxati bo'sh!", show_alert=True)
+                await app.shutdown()
+                return
+            save_wizard_state(user_id, {"step": "MSG_WAIT_TEXT_ALL"})
+            cancel_kb = ReplyKeyboardMarkup(
+                [[KeyboardButton(text="❌ Bekor qilish")]],
+                resize_keyboard=True,
+                one_time_keyboard=True
+            )
+            await app.bot.send_message(
+                chat_id=user_id,
+                text=(
+                    f"📢 <b>Barcha ustozlarga xabar yuborish (Broadcast):</b>\n"
+                    f"━━━━━━━━━━━━━━━━━━━━━\n"
+                    f"👥 Ro'yxatda jami <b>{t_count} nafar</b> ustoz mavjud.\n\n"
+                    f"Barcha ustozlarga yetkazilishi kerak bo'lgan <b>xabaringizni yuboring</b> (matn, rasm, video yoki fayl):\n\n"
+                    f"<i>(Bekor qilish uchun «❌ Bekor qilish» yoki /cancel deb yozing)</i>"
+                ),
+                reply_markup=cancel_kb,
+                parse_mode=ParseMode.HTML
+            )
+            await query.answer()
 
         elif data == "wiz_cancel":
             clear_wizard_state(user_id)
@@ -1635,6 +2008,92 @@ class handler(BaseHTTPRequestHandler):
                     loop.run_until_complete(send_rem())
                     loop.close()
                     self.wfile.write(json.dumps({"ok": True}).encode())
+                except Exception as ex:
+                    self.wfile.write(json.dumps({"ok": False, "error": str(ex)}).encode())
+                return
+
+            elif data.get("action") == "send_teacher_message":
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.end_headers()
+
+                if int(data.get("root_id", 0)) != ROOT_ID:
+                    self.wfile.write(json.dumps({"ok": False, "error": "Ruxsatsiz amal!"}).encode())
+                    return
+
+                t_id = str(data.get("telegram_id", "")).strip()
+                msg_text = str(data.get("message_text", "")).strip()
+                if not t_id or not msg_text:
+                    self.wfile.write(json.dumps({"ok": False, "error": "ID yoki xabar matni bo'sh!"}).encode())
+                    return
+
+                teachers = load_teachers(force_remote=False, passed_pat=passed_pat)
+                t = teachers.get(t_id, {})
+                t_name = t.get("name", "Ustoz")
+
+                try:
+                    loop = asyncio.new_event_loop()
+                    async def send_single():
+                        app = Application.builder().token(config.BOT_TOKEN).build()
+                        await app.initialize()
+                        body = (
+                            f"📩 <b>AvtoEmaktab Administratsiyasi:</b>\n"
+                            f"━━━━━━━━━━━━━━━━━━━━━\n"
+                            f"Hurmatli <b>{t_name}</b> ustoz!\n\n"
+                            f"{html.escape(msg_text)}"
+                        )
+                        await app.bot.send_message(chat_id=int(t_id), text=body, parse_mode=ParseMode.HTML)
+                        await app.shutdown()
+                    loop.run_until_complete(send_single())
+                    loop.close()
+                    self.wfile.write(json.dumps({"ok": True}).encode())
+                except Exception as ex:
+                    self.wfile.write(json.dumps({"ok": False, "error": str(ex)}).encode())
+                return
+
+            elif data.get("action") == "broadcast_message":
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.end_headers()
+
+                if int(data.get("root_id", 0)) != ROOT_ID:
+                    self.wfile.write(json.dumps({"ok": False, "error": "Ruxsatsiz amal!"}).encode())
+                    return
+
+                msg_text = str(data.get("message_text", "")).strip()
+                if not msg_text:
+                    self.wfile.write(json.dumps({"ok": False, "error": "Xabar matni bo'sh!"}).encode())
+                    return
+
+                teachers = load_teachers(force_remote=False, passed_pat=passed_pat)
+                success_count = 0
+                fail_count = 0
+
+                try:
+                    loop = asyncio.new_event_loop()
+                    async def do_broadcast():
+                        nonlocal success_count, fail_count
+                        app = Application.builder().token(config.BOT_TOKEN).build()
+                        await app.initialize()
+                        for uid_str, t_info in teachers.items():
+                            try:
+                                t_name = t_info.get("name", "Ustoz")
+                                body = (
+                                    f"📢 <b>RASMIY E'LON / XABARNOMA</b>\n"
+                                    f"━━━━━━━━━━━━━━━━━━━━━\n"
+                                    f"Hurmatli <b>{t_name}</b> ustoz!\n\n"
+                                    f"{html.escape(msg_text)}"
+                                )
+                                await app.bot.send_message(chat_id=int(uid_str), text=body, parse_mode=ParseMode.HTML)
+                                success_count += 1
+                            except Exception:
+                                fail_count += 1
+                        await app.shutdown()
+                    loop.run_until_complete(do_broadcast())
+                    loop.close()
+                    self.wfile.write(json.dumps({"ok": True, "sent": success_count, "failed": fail_count, "total": len(teachers)}).encode())
                 except Exception as ex:
                     self.wfile.write(json.dumps({"ok": False, "error": str(ex)}).encode())
                 return

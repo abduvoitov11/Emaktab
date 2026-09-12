@@ -113,9 +113,9 @@ async def tariflar_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "🏫 <b>2. KATTA PAKET (2 - 5 ta sinf):</b>\n"
         "• Narxi: Kelishilgan narxda (Chegirma bilan)\n"
         "• Har bir ustozga faqat o'z sinfi hisoboti\n"
-        "• Bosh admin uchun umumiy xulosa\n\n"
+        "• Root uchun umumiy xulosa\n\n"
         "🏢 <b>3. BUTUN MAKTAB:</b>\n"
-        "• Narxi: <b>$300 / oyiga</b>\n"
+        "• Narxi: <b>$240 / oyiga</b>\n"
         "• Barcha sinflar va sinf rahbarlari uchun to'liq avtomatlashtirish\n"
         "• Maktab ma'muriyati uchun markazlashgan hisobot"
     )
@@ -225,9 +225,9 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "🏫 <b>2. KATTA PAKET (2 - 5 ta sinf):</b>\n"
             "• Narxi: Kelishilgan narxda (Chegirma bilan)\n"
             "• Har bir ustozga faqat o'z sinfi hisoboti\n"
-            "• Bosh admin uchun umumiy xulosa\n\n"
+            "• Root uchun umumiy xulosa\n\n"
             "🏢 <b>3. BUTUN MAKTAB:</b>\n"
-            "• Narxi: <b>$300 / oyiga</b>\n"
+            "• Narxi: <b>$240 / oyiga</b>\n"
             "• Barcha sinflar va sinf rahbarlari uchun kompleks yechim"
         )
         await query.edit_message_text(

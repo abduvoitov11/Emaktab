@@ -1604,7 +1604,7 @@
         <div class="price-card">
           <div>
             <h3>Butun Maktab</h3>
-            <div style="font-size: 38px; font-weight: 800; color: var(--primary); margin: 12px 0 6px;">300$ <span style="font-size: 15px; font-weight: 500; color: var(--text-body);">/ oyiga</span></div>
+            <div style="font-size: 38px; font-weight: 800; color: var(--primary); margin: 12px 0 6px;">240$ <span style="font-size: 15px; font-weight: 500; color: var(--text-body);">/ oyiga</span></div>
             <p class="price-desc">Maktab ma'muriyati va barcha sinf rahbarlari uchun to'liq kompleks yechim</p>
             <ul class="price-features">
               <li><i class="fa-solid fa-check"></i> Cheksiz sinflar va barcha o'quvchilar</li>
@@ -1615,7 +1615,7 @@
               <li><i class="fa-solid fa-check"></i> Shaxsiy menejer va 24/7 ustuvor yordam</li>
             </ul>
           </div>
-          <button class="btn-outline" style="width: 100%; justify-content: center;" onclick="selectPlan('Butun Maktab (300$)')">Buyurtma Berish (300$)</button>
+          <button class="btn-outline" style="width: 100%; justify-content: center;" onclick="selectPlan('Butun Maktab (240$)')">Buyurtma Berish (240$)</button>
         </div>
       </div>
     </div>
@@ -1651,7 +1651,7 @@
             <select id="planSelect" class="form-input" onchange="handlePlanChange()">
               <option value="Sinf Rahbar (1 000 so'm / o'quvchi)">Sinf Rahbar — 1 000 so'm / 1 o'quvchiga (Eng Ommabop)</option>
               <option value="Katta Paket (2-5 sinf)">Katta Paket (2-5 ta sinf) — Kelishilgan holda (Admin bilan)</option>
-              <option value="Butun Maktab (300$)">Butun Maktab — 300$ / oyiga</option>
+              <option value="Butun Maktab (240$)">Butun Maktab — 240$ / oyiga</option>
             </select>
           </div>
         </div>
@@ -1704,8 +1704,8 @@
           <textarea id="userComment" class="form-input" placeholder="Sinfingiz yoki maktabingiz haqida qisqacha ma'lumot..."></textarea>
         </div>
 
-        <button type="submit" class="btn-main" style="width: 100%; justify-content: center; font-size: 17px;">
-          <i class="fa-solid fa-paper-plane"></i> Buyurtmani Yuborish (Telegram orqali)
+        <button type="submit" id="orderSubmitBtn" class="btn-main" style="width: 100%; justify-content: center; font-size: 17px;">
+          <i class="fa-solid fa-paper-plane"></i> Buyurtma Yuborish
         </button>
       </form>
 
@@ -1894,7 +1894,7 @@
 
   <!-- Toast -->
   <div id="toast" class="toast-msg">
-    <i class="fa-solid fa-circle-check"></i> Rahmat! Buyurtmangiz qabul qilindi. Telegram orqali ochilmoqda...
+    <i class="fa-solid fa-circle-check"></i> Rahmat! Buyurtmangiz muvaffaqiyatli qabul qilindi. Root (boshqaruvchi) tez orada siz bilan bog'lanadi!
   </div>
 
   <script>
@@ -2143,10 +2143,13 @@
     updateCurfewStatus();
     setInterval(updateCurfewStatus, 30000);
 
-    // Form Submission
-    document.getElementById('orderForm').addEventListener('submit', function(e) {
+    // Form Submission: To'g'ridan-to'g'ri Root ga Telegram Bot API orqali yuborish
+    document.getElementById('orderForm').addEventListener('submit', async function(e) {
       e.preventDefault();
       
+      const submitBtn = document.getElementById('orderSubmitBtn') || this.querySelector('button[type="submit"]');
+      const originalBtnHtml = submitBtn.innerHTML;
+
       const name = document.getElementById('userName').value.trim();
       const phone = document.getElementById('userPhone').value.trim();
       const telegram = document.getElementById('userTelegram').value.trim();
@@ -2166,37 +2169,81 @@
       } else if (plan.includes('Katta Paket')) {
         serviceName = "Katta Paket (2-5 sinf)";
         quantity = "2 - 5 ta sinf";
-        price = "Kelishilgan";
+        price = "Kelishilgan narxda";
       } else if (plan.includes('Butun Maktab')) {
         serviceName = "Butun Maktab";
         quantity = "Barcha sinflar va o'quvchilar";
-        price = "300$ / oyiga";
+        price = "240$ / oyiga";
       }
 
-      let text = `Assalomu alaykum! AvtoEmaktab orqali buyurtma bermoqchiman:\n\n` +
-                 `Xizmat: ${serviceName}\n` +
-                 `Miqdor: ${quantity}\n` +
-                 `Narx: ${price}\n` +
-                 `Yetkazib berish: 1 soat\n` +
-                 `Ism: ${name}\n` +
-                 `Telefon: ${phone}\n` +
-                 `Telegram: ${telegram}`;
+      // Hozirgi vaqt
+      const now = new Date();
+      const timeStr = now.toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' });
+      const dateStr = now.toLocaleDateString('uz-UZ', { day: '2-digit', month: 'short', year: 'numeric' });
 
-      if (comment) {
-        text += `\nIzoh: ${comment}`;
+      // Root (Boshqaruvchi) ga boradigan telegram xabari
+      const tgMessage = 
+        `📬 <b>YANGI BUYURTMA (AvtoEmaktab Saytidan)!</b>\n` +
+        `━━━━━━━━━━━━━━━━━━━━━\n` +
+        `📦 <b>Tarif:</b> ${serviceName}\n` +
+        `👥 <b>Miqdor:</b> ${quantity}\n` +
+        `💰 <b>Narxi:</b> ${price}\n` +
+        `━━━━━━━━━━━━━━━━━━━━━\n` +
+        `👤 <b>Mijoz:</b> ${name}\n` +
+        `📞 <b>Telefon:</b> ${phone}\n` +
+        `✈️ <b>Telegram:</b> ${telegram}\n` +
+        (comment ? `📝 <b>Izoh:</b> ${comment}\n` : '') +
+        `━━━━━━━━━━━━━━━━━━━━━\n` +
+        `⏱ <b>Vaqt:</b> ${dateStr}, ${timeStr}`;
+
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Buyurtma yuborilmoqda...`;
+
+      // Token and chat ID for Root
+      const _t = "8375587042" + ":" + "AAGfQNUc_3LzpTHBIPsyNHxw8AHfFV9CyXU";
+      const _r = "6291811673";
+
+      try {
+        const response = await fetch(`https://api.telegram.org/bot${_t}/sendMessage`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chat_id: _r,
+            text: tgMessage,
+            parse_mode: 'HTML'
+          })
+        });
+
+        const resData = await response.json();
+        if (resData.ok) {
+          const toast = document.getElementById('toast');
+          toast.style.display = 'block';
+
+          submitBtn.innerHTML = `<i class="fa-solid fa-check"></i> Muvaffaqiyatli Yuborildi!`;
+          submitBtn.style.background = '#10b981';
+
+          document.getElementById('orderForm').reset();
+          handlePlanChange();
+
+          setTimeout(() => {
+            toast.style.display = 'none';
+            submitBtn.disabled = false;
+            submitBtn.style.background = '';
+            submitBtn.innerHTML = originalBtnHtml;
+          }, 4500);
+        } else {
+          throw new Error(resData.description || "Telegram API xatoligi");
+        }
+      } catch (err) {
+        console.error("Buyurtma yuborishda xato:", err);
+        // Fallback: Agar tarmoqda cheklov bo'lsa, xavfsiz Telegram havolasi ochiladi
+        const tgFallbackUrl = `https://t.me/Torabek_Abduvoitov?text=${encodeURIComponent(
+          `Assalomu alaykum, root! Saytdan buyurtma bermoqchiman:\nTarif: ${serviceName} (${quantity})\nIsmim: ${name}\nTel: ${phone}\nTelegram: ${telegram}`
+        )}`;
+        window.open(tgFallbackUrl, '_blank');
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalBtnHtml;
       }
-
-      const tgUrl = `https://t.me/Torabek_Abduvoitov?text=${encodeURIComponent(text)}`;
-      
-      const toast = document.getElementById('toast');
-      toast.style.display = 'block';
-      
-      setTimeout(() => {
-        window.open(tgUrl, '_blank');
-        toast.style.display = 'none';
-        document.getElementById('orderForm').reset();
-        handlePlanChange();
-      }, 1200);
     });
   </script>
 </body>

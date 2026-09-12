@@ -5,8 +5,9 @@ import os
 
 # ==================== 1. IERARXIYA VA FOYDALANUVCHILAR ====================
 
-# Eng katta va asosiy tizim administratori (Barcha sinflar keladi)
-SUPER_ADMIN_ID = int(os.getenv("SUPER_ADMIN_ID", "6291811673"))
+# ROOT (Asosiy tizim boshqaruvchisi — barcha sinflar hisoboti keladi)
+ROOT_ID = SUPER_ADMIN_ID = int(os.getenv("SUPER_ADMIN_ID", "6291811673"))
+ROOT_NAME = "root"
 
 # Sinf rahbarlari (Ustozlar): Har bir ustozga faqat o'z sinfining hisobotlari boradi
 TEACHERS = {

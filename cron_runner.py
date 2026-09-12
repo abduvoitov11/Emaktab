@@ -205,9 +205,9 @@ def generate_weekly_schedule(accounts: list, year: int, week: int):
 async def send_greetings_if_needed(bot: Bot, sinf: str):
     if config.SUPER_ADMIN_ID not in greeted_recipients:
         admin_greeting = (
-            "⚡ <b>AvtoEmaktab Bosh Monitoring Tizimi</b> 🎓\n"
+            "⚡ <b>AvtoEmaktab Root Monitoring Tizimi</b> 🎓\n"
             "━━━━━━━━━━━━━━━━━━━━━\n"
-            "Assalomu alaykum, <b>Bosh Administrator</b>!\n\n"
+            "Assalomu alaykum, <b>root</b>!\n\n"
             "🚀 Bugungi eMaktab avtomatlashtirish jarayoni boshlandi.\n"
             "📊 <i>Barcha sinflar bo'yicha 1080p HD video va foto hisobotlar quyida qabul qilinmoqda...</i> ⬇️"
         )

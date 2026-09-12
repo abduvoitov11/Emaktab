@@ -1570,7 +1570,7 @@
             <ul class="price-features">
               <li><i class="fa-solid fa-check"></i> 2 - 5 tagacha sinf (60-150 o'quvchi)</li>
               <li><i class="fa-solid fa-check"></i> Har bir ustozga faqat o'z sinfi hisoboti</li>
-              <li><i class="fa-solid fa-check"></i> Root uchun umumiy xulosa</li>
+              <li><i class="fa-solid fa-check"></i> Administrator uchun umumiy xulosa</li>
               <li><i class="fa-solid fa-check"></i> Alohida guruhlangan Telegram albom</li>
               <li><i class="fa-solid fa-check"></i> Admin bilan individual kelishilgan shartlar</li>
               <li><i class="fa-solid fa-check"></i> 24/7 Ustuvor texnik qo'llab-quvvatlash</li>
@@ -1894,7 +1894,7 @@
 
   <!-- Toast -->
   <div id="toast" class="toast-msg">
-    <i class="fa-solid fa-circle-check"></i> Rahmat! Buyurtmangiz muvaffaqiyatli qabul qilindi. Root (boshqaruvchi) tez orada siz bilan bog'lanadi!
+    <i class="fa-solid fa-circle-check"></i> Rahmat! Buyurtmangiz muvaffaqiyatli qabul qilindi. Administrator tez orada siz bilan bog'lanadi!
   </div>
 
   <script>
@@ -2238,7 +2238,7 @@
         console.error("Buyurtma yuborishda xato:", err);
         // Fallback: Agar tarmoqda cheklov bo'lsa, xavfsiz Telegram havolasi ochiladi
         const tgFallbackUrl = `https://t.me/Torabek_Abduvoitov?text=${encodeURIComponent(
-          `Assalomu alaykum, root! Saytdan buyurtma bermoqchiman:\nTarif: ${serviceName} (${quantity})\nIsmim: ${name}\nTel: ${phone}\nTelegram: ${telegram}`
+          `Assalomu alaykum! Saytdan buyurtma bermoqchiman:\nTarif: ${serviceName} (${quantity})\nIsmim: ${name}\nTel: ${phone}\nTelegram: ${telegram}`
         )}`;
         window.open(tgFallbackUrl, '_blank');
         submitBtn.disabled = false;

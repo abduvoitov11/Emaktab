@@ -99,6 +99,14 @@ GITHUB_PAT = os.getenv("GITHUB_PAT", "")
 
 # ==================== DATA FUNCTIONS (TEACHERS) ====================
 
+
+def is_authorized_user(user_id: int) -> bool:
+    """Foydalanuvchi Root yoki ro'yxatdan o'tgan ustoz ekanligini tekshiradi"""
+    if user_id == ROOT_ID:
+        return True
+    teachers = load_teachers()
+    return str(user_id) in teachers
+
 def load_teachers() -> dict:
     try:
         if os.path.exists(TEACHERS_FILE):
@@ -365,6 +373,35 @@ async def process_update(update_data: dict):
         user = update.effective_user
         user_id = user.id if user else 0
         name = user.first_name if user else "Hurmatli Ustoz"
+
+        # AGAR BEGONA BO'LSA (Root ham emas, teachers.json da ham yo'q)
+        if not is_authorized_user(user_id):
+            blocked_text = (
+                f"🔒 <b>KIRISH CHEKLANGAN!</b>
+"
+                f"━━━━━━━━━━━━━━━━━━━━━
+"
+                f"Assalomu alaykum, {name}!
+
+"
+                f"Ushbu bot faqat <b>AvtoEmaktab</b> xizmatiga rasman ulangan sinf rahbarlari uchun mo'ljallangan.
+
+"
+                f"Botdan foydalanish uchun <b>@{ADMIN_USERNAME}</b> profili bilan bog'laning.
+
+"
+                f"🆔 <b>Sizning Telegram ID:</b> <code>{user_id}</code>"
+            )
+            keyboard = [
+                [InlineKeyboardButton("💬 @Torabek_Abduvoitov bilan bog'lanish", url=f"https://t.me/{ADMIN_USERNAME}")]
+            ]
+            await msg.reply_text(
+                text=blocked_text,
+                reply_markup=InlineKeyboardMarkup(keyboard),
+                parse_mode=ParseMode.HTML
+            )
+            await app.shutdown()
+            return
 
         # 1. /start yoki /sayt
         if text.startswith("/start") or text.startswith("/sayt"):
@@ -642,11 +679,17 @@ async def process_update(update_data: dict):
     # ---------- Inline tugmalar (callback_query) ----------
     elif update.callback_query:
         query = update.callback_query
-        await query.answer()
-        data = query.data
         user = update.effective_user
         user_id = user.id if user else 0
         name = user.first_name if user else "Hurmatli Ustoz"
+
+        if not is_authorized_user(user_id):
+            await query.answer("⛔ Botdan foydalanish uchun @Torabek_Abduvoitov bilan bog'laning!", show_alert=True)
+            await app.shutdown()
+            return
+
+        await query.answer()
+        data = query.data
 
         if data == "btn_main_menu":
             await query.edit_message_text(

@@ -15,7 +15,6 @@ from telegram.constants import ParseMode
 
 import config
 
-# ===== CAPTCHA: ddddocr avtomatik yechish =====
 try:
     import ddddocr
     _ocr = ddddocr.DdddOcr(show_ad=False)
@@ -40,7 +39,6 @@ greeted_recipients = set()
 
 
 def find_excel_files(target_class=None):
-    """Mavjud barcha sinf va foydalanuvchi Excel fayllarini aniqlaydi."""
     if target_class:
         t = target_class.strip().upper().replace(" ", "").replace("-", "")
         if t in ["3D", "3-D"]:
@@ -145,7 +143,6 @@ def load_accounts(file_paths=None, target_class=None, target_login=None):
 
 
 def solve_captcha(image_bytes: bytes) -> str:
-    """ddddocr yordamida captcha rasmini matn(string)ga aylantiradi."""
     if not DDDDOCR_AVAILABLE or _ocr is None:
         return ""
     try:
@@ -353,7 +350,6 @@ async def run_local():
             session_path = os.path.join(SESSIONS_DIR, f"{login}.json")
             session_exists = os.path.exists(session_path)
 
-            # === SESSION MAVJUD BO'LSA: Login sahifasini o'tkazib yuboramiz ===
             if session_exists:
                 print(f"[✅] {login} uchun saqlangan session topildi — login sahifasi o'tkaziladi.")
                 context = await browser.new_context(
@@ -373,7 +369,6 @@ async def run_local():
                     session_exists = False
                     await context.close()
 
-            # === SESSION YO'Q BO'LSA: To'liq login jarayoni ===
             if not session_exists:
                 context = await browser.new_context(
                     viewport={"width": 1280, "height": 720},
@@ -401,7 +396,6 @@ async def run_local():
                             await page.type('input[name="password"]', char, delay=random.randint(60, 110))
                         await asyncio.sleep(random.uniform(0.6, 1.2))
 
-                        # Captcha tekshiruvi
                         captcha_visible = await page.evaluate("""
                             () => {
                                 const el = document.querySelector('.login__body__captcha');
@@ -456,10 +450,8 @@ async def run_local():
                     continue
 
             try:
-                # === AQLLI BROWSING: Barcha sahifalarni o'zi topib bosadi ===
                 print(f"[🤖] {login} — Aqlli browsing sessiyasi boshlanmoqda...")
 
-                # 1. Bosh sahifada skrinshot + scroll
                 photo_path = os.path.join(MEDIA_DIR, f"{login}.png")
                 await page.screenshot(path=photo_path, full_page=False)
                 print(f"[📸] Bosh sahifa skrinshoti olindi.")
@@ -468,7 +460,6 @@ async def run_local():
                 await smooth_scroll_up(page, steps=2)
                 await asyncio.sleep(random.uniform(0.5, 1.0))
 
-                # 2. Nav menudan barcha tugmalarni topib bosish
                 nav_selectors = [
                     'a:has-text("Kundalik")',
                     'a:has-text("Дневник")',
@@ -510,7 +501,6 @@ async def run_local():
                     except Exception as ex:
                         continue
 
-                # 3. Sidebar / Panel ichidagi qo'shimcha bo'limlar
                 sidebar_selectors = [
                     '.user-info, .profile-link, a:has-text("Profil"), a:has-text("Профиль")',
                     'a:has-text("Xabar"), a:has-text("Bildirishnoma"), .notification-link',
@@ -533,7 +523,6 @@ async def run_local():
                     except Exception:
                         continue
 
-                # 4. Bosh sahifani o'zi topib qaytish — AQLLI QIDIRISH
                 print(f"[🏠] {login} — Bosh sahifani qidirib qaytilmoqda...")
                 home_found = False
 
@@ -565,7 +554,6 @@ async def run_local():
                     except Exception:
                         await page.go_back()
 
-                # 5. Bosh sahifada 2 soniya kutish va videoni yakunlash
                 print(f"[⏱️] {login} — Bosh sahifada 2 soniya kutilmoqda (video yakunlanmoqda)...")
                 await asyncio.sleep(2.0)
 

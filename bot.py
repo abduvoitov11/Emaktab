@@ -1,7 +1,3 @@
-"""
-AvtoEmaktab — Rasmiy Interaktiv Telegram Boti
-eMaktab.uz monitoring xizmati va foydalanuvchilar bilan interaktiv muloqot
-"""
 import logging
 import zoneinfo
 from datetime import datetime

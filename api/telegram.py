@@ -1,7 +1,3 @@
-"""
-AvtoEmaktab — Vercel Serverless Webhook Handler & Billing / Teachers System
-Telegram bot uchun webhook endpoint va ustozlar hisob tizimi.
-"""
 import json
 import os
 import sys
@@ -13,7 +9,6 @@ import base64
 from datetime import datetime, timedelta
 from http.server import BaseHTTPRequestHandler
 
-# Vercel da loyiha root papkasini sys.path ga qo'shamiz
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
@@ -40,19 +35,13 @@ SCHEDULE_FILE = os.path.join(os.path.dirname(__file__), "..", "schedule_config.j
 GITHUB_REPO = "abduvoitov11/Emaktab"
 GITHUB_PAT = os.getenv("GITHUB_PAT", "")
 
-# In-memory keshlash (real-time tezkor javob uchun)
 _teachers_cache = None
 _teachers_cache_time = 0
 _schedule_cache = None
 _schedule_cache_time = 0
-CACHE_TTL = 3  # soniya
+CACHE_TTL = 3
 
 def get_active_gh_pat(passed_pat: str = None) -> str:
-    """GitHub PAT ni ustuvorlik tartibida oladi:
-    1. So'rov orqali kelgan passed_pat
-    2. /tmp/gh_pat.txt da saqlangan PAT
-    3. OS muhit o'zgaruvchisi os.getenv("GITHUB_PAT")
-    """
     if passed_pat and isinstance(passed_pat, str) and passed_pat.strip().startswith("ghp_"):
         clean_pat = passed_pat.strip()
         try:
@@ -78,7 +67,6 @@ def get_active_gh_pat(passed_pat: str = None) -> str:
     return ""
 
 
-# ==================== AUTH & DATA FUNCTIONS ====================
 
 def load_teachers(force_remote: bool = False, passed_pat: str = None) -> dict:
     global _teachers_cache, _teachers_cache_time
@@ -87,7 +75,6 @@ def load_teachers(force_remote: bool = False, passed_pat: str = None) -> dict:
         return _teachers_cache
 
     pat = get_active_gh_pat(passed_pat)
-    # 1. GitHub Contents API orqali eng oxirgi jonli versiyani olamiz
     if pat:
         try:
             url = f"https://api.github.com/repos/{GITHUB_REPO}/contents/teachers.json"
@@ -113,7 +100,6 @@ def load_teachers(force_remote: bool = False, passed_pat: str = None) -> dict:
         except Exception as e:
             logger.warning(f"GitHub API dan ustozlarni yuklashda ogohlantirish: {e}")
 
-    # 2. /tmp/teachers.json dan o'qish
     try:
         if os.path.exists("/tmp/teachers.json"):
             with open("/tmp/teachers.json", "r", encoding="utf-8") as f:
@@ -124,7 +110,6 @@ def load_teachers(force_remote: bool = False, passed_pat: str = None) -> dict:
     except Exception:
         pass
 
-    # 3. Zaxira: lokal teachers.json
     try:
         if os.path.exists(TEACHERS_FILE):
             with open(TEACHERS_FILE, "r", encoding="utf-8") as f:
@@ -138,7 +123,6 @@ def load_teachers(force_remote: bool = False, passed_pat: str = None) -> dict:
 
 
 def is_authorized_user(user_id: int) -> bool:
-    """Foydalanuvchi Root yoki ro'yxatdan o'tgan ustoz ekanligini tekshiradi"""
     if user_id == ROOT_ID:
         return True
     teachers = load_teachers()
@@ -234,7 +218,6 @@ def save_schedule_locally(data: dict):
 
 
 def sync_file_to_github(filename: str, data: any, commit_msg: str, passed_pat: str = None) -> bool:
-    """Vercel serverless muhitida faylni GitHub repoga avtomat commit qilish"""
     pat = get_active_gh_pat(passed_pat)
     if not pat:
         logger.warning(f"GitHub sync skipped ({filename}): GITHUB_PAT mavjud emas")
@@ -277,7 +260,6 @@ def sync_file_to_github(filename: str, data: any, commit_msg: str, passed_pat: s
 
 
 def record_security_incident(user_id: int, name: str, username: str, command_text: str, incident_type: str = "UNAUTHORIZED_ACCESS"):
-    """Haqiqiy xavfsizlik jurnaliga yozish va arxivlash"""
     now_str = datetime.now(zoneinfo.ZoneInfo("Asia/Tashkent")).strftime("%Y-%m-%d %H:%M:%S")
     incident = {
         "id": f"INC-{int(datetime.now().timestamp())}",
@@ -302,7 +284,6 @@ def record_security_incident(user_id: int, name: str, username: str, command_tex
     return incident
 
 
-# ==================== KLAVIATURALAR ====================
 
 def get_main_keyboard(user_id: int) -> InlineKeyboardMarkup:
     keyboard = [
@@ -341,7 +322,6 @@ def get_back_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(keyboard)
 
 
-# ==================== MATNLAR ====================
 
 def get_welcome_text(user_first_name: str) -> str:
     return (
@@ -500,16 +480,13 @@ def get_admin_info_text() -> str:
     )
 
 
-# ==================== UPDATE PROCESSOR ====================
 
 async def process_update(update_data: dict):
-    """Telegramdan kelgan JSON update ni qayta ishlaydi"""
     app = Application.builder().token(config.BOT_TOKEN).build()
     await app.initialize()
 
     update = Update.de_json(update_data, app.bot)
 
-    # ---------- Xabarlar (message) ----------
     if update.message:
         msg = update.message
         text = (msg.text or "").strip()
@@ -518,7 +495,6 @@ async def process_update(update_data: dict):
         name = user.first_name if user else "Hurmatli Ustoz"
         uname_str = f"@{user.username}" if (user and user.username) else "Mavjud emas"
 
-        # 1. GATEKEEPER: AGAR BEGONA BO'LSA
         if not is_authorized_user(user_id):
             blocked_text = (
                 "🔒 <b>KIRISH CHEKLANGAN!</b>\n"
@@ -539,7 +515,6 @@ async def process_update(update_data: dict):
             await app.shutdown()
             return
 
-        # 2. /start yoki /sayt
         if text.startswith("/start") or text.startswith("/sayt"):
             await msg.reply_text(
                 text=get_welcome_text(name),
@@ -547,7 +522,6 @@ async def process_update(update_data: dict):
                 parse_mode=ParseMode.HTML
             )
 
-        # 3. /kabinet
         elif text.startswith("/kabinet"):
             await msg.reply_text(
                 text=get_cabinet_text(user_id, name),
@@ -555,7 +529,6 @@ async def process_update(update_data: dict):
                 parse_mode=ParseMode.HTML
             )
 
-        # 4. /tariflar
         elif text.startswith("/tariflar"):
             await msg.reply_text(
                 text=get_tariffs_text(),
@@ -563,7 +536,6 @@ async def process_update(update_data: dict):
                 parse_mode=ParseMode.HTML
             )
 
-        # 5. /xavfsizlik
         elif text.startswith("/xavfsizlik"):
             await msg.reply_text(
                 text=get_security_text(),
@@ -571,7 +543,6 @@ async def process_update(update_data: dict):
                 parse_mode=ParseMode.HTML
             )
 
-        # 6. /status
         elif text.startswith("/status"):
             await msg.reply_text(
                 text=get_status_text(),
@@ -579,7 +550,6 @@ async def process_update(update_data: dict):
                 parse_mode=ParseMode.HTML
             )
 
-        # 7. /admin
         elif text.startswith("/admin"):
             keyboard = [
                 [InlineKeyboardButton("💬 Adminga Yozish", url=f"https://t.me/{ADMIN_USERNAME}")],
@@ -591,7 +561,6 @@ async def process_update(update_data: dict):
                 parse_mode=ParseMode.HTML
             )
 
-        # ================= QAT'IY XAVFSIZLIK VA ROOT ADMIN BUYRUQLARI =================
         elif any(text.startswith(cmd) for cmd in ["/qosh", "/uzaytir", "/ochir", "/ustozlar", "/xavfsizlik_jurnali", "/audit"]):
             if user_id != ROOT_ID:
                 inc = record_security_incident(user_id, name, uname_str, text, "UNAUTHORIZED_ADMIN_COMMAND")
@@ -621,7 +590,6 @@ async def process_update(update_data: dict):
                 await app.shutdown()
                 return
 
-            # ROOT BUYRUQLARI:
             if text.startswith("/qosh"):
                 parts = text.split()
                 if len(parts) >= 6:
@@ -772,7 +740,6 @@ async def process_update(update_data: dict):
                     else:
                         await msg.reply_text(f"❌ ID {target_id} topilmadi.")
 
-    # ---------- Inline tugmalar (callback_query) ----------
     elif update.callback_query:
         query = update.callback_query
         user = update.effective_user
@@ -868,7 +835,6 @@ async def process_update(update_data: dict):
     await app.shutdown()
 
 
-# ==================== VERCEL HTTP HANDLER ====================
 
 class handler(BaseHTTPRequestHandler):
     def log_message(self, format, *args):
@@ -894,7 +860,6 @@ class handler(BaseHTTPRequestHandler):
             if "pat" in parsed_qs and parsed_qs["pat"]:
                 passed_pat = parsed_qs["pat"][0]
 
-        # Agar admin panel ustozlar ro'yxatini so'rasa
         if "action=get_teachers" in self.path:
             if "root_id=6291811673" in self.path:
                 teachers = load_teachers(force_remote=True, passed_pat=passed_pat)
@@ -909,7 +874,6 @@ class handler(BaseHTTPRequestHandler):
                 self.wfile.write(json.dumps({"ok": False, "error": "Ruxsat yo'q"}).encode())
                 return
 
-        # Agar admin panel grafik sozlamalarini so'rasa
         if "action=get_schedule" in self.path:
             if "root_id=6291811673" in self.path:
                 sch = load_schedule(force_remote=True, passed_pat=passed_pat)
@@ -937,7 +901,6 @@ class handler(BaseHTTPRequestHandler):
             data = json.loads(body.decode("utf-8"))
             passed_pat = data.get("gh_pat") or self.headers.get("X-GitHub-PAT", "")
 
-            # Veb admin panelga begona shaxs kirishga uringanda
             if data.get("action") == "log_web_intrusion":
                 self.send_response(200)
                 self.send_header("Content-Type", "application/json")
@@ -994,7 +957,6 @@ class handler(BaseHTTPRequestHandler):
                 self.wfile.write(json.dumps({"ok": True}).encode())
                 return
 
-            # PAT saqlash va tekshirish
             if data.get("action") == "set_pat":
                 self.send_response(200)
                 self.send_header("Content-Type", "application/json")
@@ -1026,7 +988,6 @@ class handler(BaseHTTPRequestHandler):
                     self.wfile.write(json.dumps({"ok": False, "error": "Noto'g'ri PAT formati"}).encode())
                 return
 
-            # Agar saytdan yangi ustoz qo'shish so'rovi kelsa
             if data.get("action") == "add_teacher":
                 self.send_response(200)
                 self.send_header("Content-Type", "application/json")
@@ -1057,7 +1018,6 @@ class handler(BaseHTTPRequestHandler):
                 save_teachers_locally(teachers)
                 synced = sync_file_to_github("teachers.json", teachers, f"feat(billing): add teacher {t_name} from web admin", passed_pat=passed_pat)
 
-                # Ustozga avto tabrik xabari
                 try:
                     loop = asyncio.new_event_loop()
                     async def notify():
@@ -1089,7 +1049,6 @@ class handler(BaseHTTPRequestHandler):
                 }).encode())
                 return
 
-            # Jadval sozlamalarini saqlash
             elif data.get("action") == "save_schedule":
                 self.send_response(200)
                 self.send_header("Content-Type", "application/json")
@@ -1114,7 +1073,6 @@ class handler(BaseHTTPRequestHandler):
                 self.wfile.write(json.dumps({"ok": True, "schedule": sch, "synced": synced}).encode())
                 return
 
-            # Darhol ishga tushirish (GitHub Actions workflow_dispatch trigger)
             elif data.get("action") == "trigger_run":
                 self.send_response(200)
                 self.send_header("Content-Type", "application/json")
@@ -1146,7 +1104,6 @@ class handler(BaseHTTPRequestHandler):
                     self.wfile.write(json.dumps({"ok": False, "error": str(ex)}).encode())
                 return
 
-            # Obunani boshqarish (uzaytirish, muzlatish, faollashtirish)
             elif data.get("action") == "manage_subscription":
                 self.send_response(200)
                 self.send_header("Content-Type", "application/json")
@@ -1182,7 +1139,6 @@ class handler(BaseHTTPRequestHandler):
                     save_teachers_locally(teachers)
                     synced = sync_file_to_github("teachers.json", teachers, f"feat(billing): extend teacher {t_id} by {days} days from web", passed_pat=passed_pat)
 
-                    # Ustozga xabar
                     try:
                         loop = asyncio.new_event_loop()
                         async def notify_ext():
@@ -1262,7 +1218,6 @@ class handler(BaseHTTPRequestHandler):
                 self.wfile.write(json.dumps({"ok": True, "teachers": teachers, "synced": synced}).encode())
                 return
 
-            # Eslatma xabari yuborish
             elif data.get("action") == "send_reminder":
                 self.send_response(200)
                 self.send_header("Content-Type", "application/json")
@@ -1304,7 +1259,6 @@ class handler(BaseHTTPRequestHandler):
                     self.wfile.write(json.dumps({"ok": False, "error": str(ex)}).encode())
                 return
 
-            # Ustozni o'chirish
             elif data.get("action") == "delete_teacher":
                 self.send_response(200)
                 self.send_header("Content-Type", "application/json")
@@ -1348,7 +1302,6 @@ class handler(BaseHTTPRequestHandler):
                     self.wfile.write(json.dumps({"ok": False, "error": "Ustoz topilmadi"}).encode())
                 return
 
-            # Aks holda Telegram Webhook update
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
             try:

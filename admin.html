@@ -36,8 +36,7 @@
             overflow-x: hidden;
         }
 
-        /* ==================== 3D FORBIDDEN SCREEN ==================== */
-        #accessDeniedScreen {
+                #accessDeniedScreen {
             display: none;
             width: 100%;
             max-width: 600px;
@@ -46,8 +45,7 @@
             perspective: 1000px;
         }
 
-        /* 3D Rotating Vault Box */
-        .vault-wrapper {
+                .vault-wrapper {
             width: 120px;
             height: 120px;
             margin: 0 auto 24px;
@@ -88,8 +86,7 @@
             100% { transform: rotateX(15deg) rotateY(360deg); }
         }
 
-        /* Glitch 3D Text */
-        .glitch-title {
+                .glitch-title {
             font-size: 38px;
             font-weight: 900;
             color: #fff;
@@ -118,8 +115,7 @@
             font-weight: 600;
         }
 
-        /* Cyber Forensic Terminal Box */
-        .terminal-box {
+                .terminal-box {
             background: #090d13;
             border: 1px solid rgba(255, 56, 56, 0.4);
             border-radius: 10px;
@@ -170,8 +166,7 @@
             line-height: 1.5;
         }
 
-        /* ==================== LOADING SPINNER ==================== */
-        #loadingScreen {
+                #loadingScreen {
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -189,8 +184,7 @@
         }
         @keyframes spin { to { transform: rotate(360deg); } }
 
-        /* ==================== MAIN DASHBOARD (ROOT) ==================== */
-        #mainDashboard {
+                #mainDashboard {
             display: none;
             width: 100%;
             max-width: 580px;
@@ -471,14 +465,12 @@
 </head>
 <body>
 
-    <!-- 1. YUKLANISH EKRANI -->
-    <div id="loadingScreen">
+        <div id="loadingScreen">
         <div class="spinner"></div>
         <p style="font-size:13px; color:#8b949e; letter-spacing:1px;">XAVFSIZLIK PROTOKOLI TEKSHIRILMOQDA...</p>
     </div>
 
-    <!-- 2. 3D FORBIDDEN SCREEN (Begonalar uchun kinematik kiber ekran) -->
-    <div id="accessDeniedScreen">
+        <div id="accessDeniedScreen">
         <div class="vault-wrapper">
             <div class="cube">
                 <div class="cube-face front">🔒</div>
@@ -533,8 +525,7 @@
         </p>
     </div>
 
-    <!-- 3. ASOSIY ROOT DASHBOARD (Faqat Root Admin kirganda ochiladi) -->
-    <div id="floatingToast" class="floating-toast"></div>
+        <div id="floatingToast" class="floating-toast"></div>
 
     <div id="mainDashboard">
         <div class="header">
@@ -560,8 +551,7 @@
             </div>
         </div>
 
-        <!-- Random Vaqtlar va Kunlar Grafigi -->
-        <div class="card">
+                <div class="card">
             <h2>
                 <span>🎲 Random Kirish Grafigi</span>
                 <span style="font-size:11px; color:#8b949e;">Anti-BAN Himoyasi</span>
@@ -596,8 +586,7 @@
             <div id="scheduleToast" class="toast"></div>
         </div>
 
-        <!-- Yangi ustoz qo'shish -->
-        <div class="card">
+                <div class="card">
             <h2>➕ Yangi Ustoz Qo'shish</h2>
             <form id="addTeacherForm">
                 <div class="form-group">
@@ -634,15 +623,13 @@
             </form>
         </div>
 
-        <!-- Ustozlar va obunalar boshqaruvi -->
-        <div class="card">
+                <div class="card">
             <h2>
                 <span>📋 Obunalar Monitoringi</span>
                 <button class="btn-refresh" onclick="loadTeachers(false)">🔄 Yangilash</button>
             </h2>
 
-            <!-- Real-Time Jonli Statistika Paneli -->
-            <div class="stats-row" style="display:flex; justify-content:space-around; margin:10px 0; font-size:12px; color:#8b949e; background:#090d13; padding:10px; border-radius:8px; border:1px solid rgba(48,54,61,0.6);">
+                        <div class="stats-row" style="display:flex; justify-content:space-around; margin:10px 0; font-size:12px; color:#8b949e; background:#090d13; padding:10px; border-radius:8px; border:1px solid rgba(48,54,61,0.6);">
                 <span>👥 Jami: <b id="cntTotal" style="color:#f0f6fc;">0</b></span>
                 <span>🟢 Faol: <b id="cntActive" style="color:#3fb950;">0</b></span>
                 <span>⏸️ Muzlatilgan: <b id="cntPaused" style="color:#d29922;">0</b></span>
@@ -663,7 +650,6 @@
     let teachersState = {};
     let toastTimeout = null;
 
-    // Toast bildirishnoma ko'rsatish
     function showToast(msg, type = "info") {
         const toast = document.getElementById("floatingToast");
         if (!toast) return;
@@ -678,7 +664,6 @@
         }, 3200);
     }
 
-    // GitHub PAT boshqaruvi
     function getSavedPat() {
         return localStorage.getItem("admin_gh_pat") || "";
     }
@@ -745,7 +730,6 @@
         return headers;
     }
 
-    // Anti-DevTools Himoyasi
     document.addEventListener("keydown", (e) => {
         if (e.key === "F12" || (e.ctrlKey && e.shiftKey && (e.key === "I" || e.key === "J" || e.key === "C")) || (e.ctrlKey && e.key === "U")) {
             e.preventDefault();
@@ -810,7 +794,6 @@
             loadSchedule();
             loadTeachers(false);
 
-            // Jonli avto-yangilanish (Real-Time Polling)
             setInterval(() => loadTeachers(true), 5000);
             setInterval(() => loadSchedule(true), 15000);
         } else {
@@ -840,7 +823,6 @@
         }
     }
 
-    // Day chips toggle
     document.querySelectorAll(".day-chip").forEach(chip => {
         chip.addEventListener("click", () => {
             chip.classList.toggle("active");
@@ -1036,12 +1018,10 @@
         }
     }
 
-    // Real-Time Optimistik Obuna Boshqaruvi
     async function modifySubscription(telegramId, actionType, days = 0) {
         const teacherCard = document.getElementById(`teacher-${telegramId}`);
         const currentTeacher = teachersState[telegramId];
 
-        // 1. Optimistik ko'rinishni darhol yangilash (0 ms kechikish)
         if (teacherCard && currentTeacher) {
             const badgeEl = teacherCard.querySelector(".t-badge");
             const expEl = teacherCard.querySelector(".exp-date");
@@ -1072,7 +1052,6 @@
             }
         }
 
-        // 2. Serverga yuborish
         try {
             const res = await fetch(API_BASE, {
                 method: "POST",
@@ -1099,11 +1078,9 @@
         }
     }
 
-    // Ustozni o'chirish
     async function deleteTeacher(telegramId, name) {
         if (!confirm(`${name} ustozni tizimdan o'chirmoqchimisiz?`)) return;
 
-        // Optimistik ravishda DOM dan olib tashlash
         const teacherCard = document.getElementById(`teacher-${telegramId}`);
         if (teacherCard) {
             teacherCard.style.transition = "all 0.3s ease";
@@ -1137,7 +1114,6 @@
         }
     }
 
-    // Yangi ustoz qo'shish formasi
     document.getElementById("addTeacherForm").addEventListener("submit", async (e) => {
         e.preventDefault();
         const btn = document.getElementById("submitBtn");

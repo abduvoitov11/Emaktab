@@ -1,15 +1,8 @@
-"""
-eMaktab Smart Automation — Konfiguratsiya va Ierarxiya
-"""
 import os
 
-# ==================== 1. IERARXIYA VA FOYDALANUVCHILAR ====================
-
-# ROOT (Asosiy tizim boshqaruvchisi — barcha sinflar hisoboti keladi)
 ROOT_ID = SUPER_ADMIN_ID = int(os.getenv("SUPER_ADMIN_ID", "6291811673"))
 ROOT_NAME = "root"
 
-# Sinf rahbarlari (Ustozlar): Har bir ustozga faqat o'z sinfining hisobotlari boradi
 TEACHERS = {
     "9-B": {
         "name": "Zuhra",
@@ -25,27 +18,19 @@ TEACHERS = {
     }
 }
 
-# ==================== 2. TELEGRAM VA EMAKTAB SOZLAMALARI ====================
 BOT_TOKEN = os.getenv("BOT_TOKEN", "8375587042:AAGfQNUc_3LzpTHBIPsyNHxw8AHfFV9CyXU")
 LOGIN_URL = "https://login.emaktab.uz/"
 
-# ==================== 3. QAT'IY CHEKLOVLAR VA ME'YORLAR ====================
-DAILY_MAX_ACCOUNTS = 11      # 1 kunda 11 tadan oshiq hisobga kirish qat'iyan taqiqlanadi
-WEEKLY_MAX_PER_ACCOUNT = 4  # 1 hisobga 1 haftada maksimal 4 martagacha kirish mumkin
+DAILY_MAX_ACCOUNTS = 11
+WEEKLY_MAX_PER_ACCOUNT = 4
 
-# ==================== 4. ANTI-BAN VA VAQT SOZLAMALARI ====================
-PAGE_LOAD_WAIT_SECONDS = 7    # Ma'lumotlar to'liq ko'rinishi uchun kutish
-MIN_HUMAN_PAUSE_SECONDS = 20  # Hisoblar orasidagi minimal insoniy pauza
-MAX_HUMAN_PAUSE_SECONDS = 45  # Hisoblar orasidagi maksimal insoniy pauza
+PAGE_LOAD_WAIT_SECONDS = 7
+MIN_HUMAN_PAUSE_SECONDS = 20
+MAX_HUMAN_PAUSE_SECONDS = 45
 
-# Boshlanishdagi tasodifiy kechikish (jitter) — sekundlarda
-MIN_STARTUP_JITTER_SECONDS = 60   # 1 daqiqa
-MAX_STARTUP_JITTER_SECONDS = 300  # 5 daqiqa
+MIN_STARTUP_JITTER_SECONDS = 60
+MAX_STARTUP_JITTER_SECONDS = 300
 
-# ==================== 5. TUNGI REJIM VA XAVFSIZLIK (21:45 - 07:00) ====================
-# eMaktab.uz tizimida o'quvchilar va o'qituvchilar tungi va kechki soatlarda faol bo'lmaydi.
-# Tizim xavfsizligi, anti-ban va insoniy xatti-harakat qoidalariga ko'ra
-# soat 21:45 dan 07:00 gacha har qanday login urinishi QAT'IYAN TAQIQLANADI!
 CURFEW_START_HOUR = 21
 CURFEW_START_MINUTE = 45
 CURFEW_END_HOUR = 7
@@ -53,10 +38,6 @@ CURFEW_END_MINUTE = 0
 
 
 def is_curfew_time(dt=None) -> bool:
-    """
-    Toshkent vaqti bo'yicha tungi taqiq (21:45 - 07:00) faol ekanligini tekshiradi.
-    21:45:00 dan 06:59:59 oralig'ida True, boshqa payt False qaytaradi.
-    """
     if dt is None:
         import zoneinfo
         from datetime import datetime
@@ -71,11 +52,6 @@ def is_curfew_time(dt=None) -> bool:
 
 
 def enforce_curfew_or_die(action_name="Login"):
-    """
-    Qat'iy xavfsizlik himoyasi:
-    Agar soat 21:45 dan 07:00 gacha bo'lsa, hech qanday istisnosiz
-    tizimni to'xtatadi va PermissionError chiqaradi.
-    """
     if is_curfew_time():
         import zoneinfo
         from datetime import datetime

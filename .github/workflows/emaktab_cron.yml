@@ -2,17 +2,11 @@ name: eMaktab Smart Scheduler
 
 on:
   schedule:
-    # 1. Dushanba: 17:15 Toshkent (12:15 UTC)
     - cron: '15 12 * * 1'
-    # 2. Seshanba: 16:45 Toshkent (11:45 UTC)
     - cron: '45 11 * * 2'
-    # 3. Chorshanba: 17:30 Toshkent (12:30 UTC)
     - cron: '30 12 * * 3'
-    # 4. Payshanba: 16:20 Toshkent (11:20 UTC)
     - cron: '20 11 * * 4'
-    # 5. Shanba: 15:45 Toshkent (10:45 UTC)
     - cron: '45 10 * * 6'
-    # Zaxira (Agar yuqoridagi vaqtda GitHub Actions navbatda qolib kechiksa - 19:00 Toshkent):
     - cron: '0 14 * * 1,2,3,4,6'
 
   workflow_dispatch:

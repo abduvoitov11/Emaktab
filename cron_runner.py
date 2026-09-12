@@ -15,7 +15,6 @@ from telegram.constants import ParseMode
 
 import config
 
-# ===== CAPTCHA: ddddocr avtomatik yechish =====
 try:
     import ddddocr
     _ocr = ddddocr.DdddOcr(show_ad=False)
@@ -40,8 +39,6 @@ greeted_recipients = set()
 
 
 def find_excel_files():
-    """Mavjud barcha sinf va foydalanuvchi Excel fayllarini aniqlaydi."""
-    # 1. Alohida sinf fayllari (9-B_Royxati.xlsx, 3-D_Royxati.xlsx)
     class_files = [
         os.path.join(BASE_DIR, "9-B_Royxati.xlsx"),
         os.path.join(BASE_DIR, "3-D_Royxati.xlsx")
@@ -49,7 +46,6 @@ def find_excel_files():
     if all(os.path.exists(f) for f in class_files):
         return class_files
 
-    # 2. Asosiy umumiy fayl
     default_excel = os.path.join(BASE_DIR, "Foydalanuvchilar_Royxati.xlsx")
     if not os.path.exists(default_excel) and os.getenv("EXCEL_BASE64"):
         import base64
@@ -63,7 +59,6 @@ def find_excel_files():
     if os.path.exists(default_excel):
         return [default_excel]
 
-    # 3. Downloads papkasi tekshiruvi
     dl_class_files = [
         "/home/torabek/Downloads/9-B_Royxati.xlsx",
         "/home/torabek/Downloads/3-D_Royxati.xlsx"
@@ -82,7 +77,6 @@ EXCEL_FILES = find_excel_files()
 
 
 def solve_captcha(image_bytes: bytes) -> str:
-    """ddddocr yordamida captcha rasmini matn(string)ga aylantiradi."""
     if not DDDDOCR_AVAILABLE or _ocr is None:
         return ""
     try:
@@ -165,7 +159,7 @@ def generate_weekly_schedule(accounts: list, year: int, week: int):
     days = {0: [], 1: [], 2: [], 3: [], 4: [], 5: [], 6: []}
     counts = {acc["login"]: 0 for acc in accounts}
 
-    active_days = [5, 6, 0, 1, 2, 3] # Shanba(5), Yakshanba(6), Dushanba(0), Seshanba(1), Chorshanba(2), Payshanba(3)
+    active_days = [5, 6, 0, 1, 2, 3]
 
     n = len(shuffled)
     saturday_quota = min(3, n)
@@ -277,7 +271,6 @@ async def send_media(bot: Bot, photo_path: str, video_path: str, caption: str, s
                 logger.warning(f"Media group yuborishda xato ({chat_id}, urinish {attempt+1}/3): {e}")
                 await asyncio.sleep(2)
 
-        # Agar media group biron sababga ko'ra o'tmasa, alohida yuborish fallback
         if not sent_group:
             logger.info(f"Media group o'tmadi, alohida yuborilmoqda ({chat_id})...")
             try:
@@ -322,7 +315,6 @@ async def process_account(browser, bot: Bot, acc: dict):
     session_path = os.path.join(SESSIONS_DIR, f"{login}.json")
     session_exists = os.path.exists(session_path)
 
-    # === SESSION MAVJUD BO'LSA: Login sahifasini o'tkazib yuboramiz ===
     if session_exists:
         logger.info(f"[✅] {login} uchun saqlangan session topildi — login sahifasi o'tkaziladi.")
         context = await browser.new_context(
@@ -336,14 +328,12 @@ async def process_account(browser, bot: Bot, acc: dict):
         await page.goto("https://emaktab.uz/userfeed", wait_until="domcontentloaded", timeout=60000)
         await asyncio.sleep(random.uniform(1.5, 2.5))
 
-        # Session eskirgan bo'lsa (login sahifasiga qaytsa) — qayta login qilamiz
         if "login.emaktab.uz" in page.url:
             logger.warning(f"[⚠️] {login} sessiyasi eskirgan — qayta login qilinmoqda...")
             os.remove(session_path)
             session_exists = False
             await context.close()
 
-    # === SESSION YO'Q BO'LSA: To'liq login jarayoni ===
     if not session_exists:
         context = await browser.new_context(
             viewport={"width": 1280, "height": 720},
@@ -353,7 +343,6 @@ async def process_account(browser, bot: Bot, acc: dict):
         )
         page = await context.new_page()
 
-        # --- Captcha bilan login (3 urinish) ---
         login_success = False
         for attempt in range(1, 4):
             try:
@@ -372,7 +361,6 @@ async def process_account(browser, bot: Bot, acc: dict):
                     await page.type('input[name="password"]', char, delay=random.randint(60, 110))
                 await asyncio.sleep(random.uniform(0.6, 1.2))
 
-                # Captcha tekshiruvi
                 captcha_visible = await page.evaluate("""
                     () => {
                         const el = document.querySelector('.login__body__captcha');
@@ -407,7 +395,6 @@ async def process_account(browser, bot: Bot, acc: dict):
 
                 if "login.emaktab.uz" not in page.url:
                     logger.info(f"[✅] {login} — Login muvaffaqiyatli! URL: {page.url}")
-                    # Session saqlanadi (keyingi ishga tushirishda login o'tkaziladi)
                     await context.storage_state(path=session_path)
                     logger.info(f"[💾] {login} sessiyasi saqlandi: {session_path}")
                     login_success = True
@@ -428,10 +415,8 @@ async def process_account(browser, bot: Bot, acc: dict):
             return False
 
     try:
-        # === AQLLI BROWSING: Barcha sahifalarni o'zi topib bosadi ===
         logger.info(f"[🤖] {login} — Aqlli browsing sessiyasi boshlanmoqda...")
 
-        # 1. Bosh sahifada skrinshot + scroll
         photo_path = os.path.join(MEDIA_DIR, f"{login}.png")
         await page.screenshot(path=photo_path, full_page=False)
         logger.info(f"[📸] Bosh sahifa skrinshoti olindi.")
@@ -440,25 +425,19 @@ async def process_account(browser, bot: Bot, acc: dict):
         await smooth_scroll_up(page, steps=2)
         await asyncio.sleep(random.uniform(0.5, 1.0))
 
-        # 2. Nav menudan barcha tugmalarni topib bosish
         nav_selectors = [
-            # Kundalik / Dnevnik
             'a:has-text("Kundalik")',
             'a:has-text("Дневник")',
             'a:has-text("Dnevnik")',
-            # Dars jadvali / Расписание
             'a:has-text("Dars jadvali")',
             'a:has-text("Расписание")',
             'a:has-text("Jadval")',
-            # Yangiliklar / Tasmasi
             'a:has-text("Yangiliklar")',
             'a:has-text("Лента")',
             'a:has-text("Novosti")',
-            # Baholar / Оценки
             'a:has-text("Baholar")',
             'a:has-text("Оценки")',
             'a:has-text("Baholar tasmasi")',
-            # Reyting
             'a:has-text("Reyting")',
             'a:has-text("Рейтинг")',
         ]
@@ -479,7 +458,6 @@ async def process_account(browser, bot: Bot, acc: dict):
                 await page.wait_for_load_state("domcontentloaded", timeout=12000)
                 await asyncio.sleep(random.uniform(1.2, 2.0))
 
-                # Sahifani inson kabi o'qish (scroll)
                 await smooth_scroll_down(page, steps=random.randint(2, 4))
                 await asyncio.sleep(random.uniform(0.8, 1.5))
                 await smooth_scroll_up(page, steps=random.randint(1, 3))
@@ -489,11 +467,8 @@ async def process_account(browser, bot: Bot, acc: dict):
                 logger.debug(f"[~] '{selector}' bosilmadi: {ex}")
                 continue
 
-        # 3. Sidebar / Panel ichidagi qo'shimcha bo'limlar
         sidebar_selectors = [
-            # Profil
             '.user-info, .profile-link, a:has-text("Profil"), a:has-text("Профиль")',
-            # Xabarnoma / Уведомления
             'a:has-text("Xabar"), a:has-text("Bildirishnoma"), .notification-link',
         ]
         for selector in sidebar_selectors:
@@ -514,7 +489,6 @@ async def process_account(browser, bot: Bot, acc: dict):
             except Exception:
                 continue
 
-        # 4. Bosh sahifani o'zi topib qaytish — AQLLI QIDIRISH
         logger.info(f"[🏠] {login} — Bosh sahifani qidirib qaytilmoqda...")
         home_found = False
 
@@ -540,7 +514,6 @@ async def process_account(browser, bot: Bot, acc: dict):
                 continue
 
         if not home_found:
-            # URL orqali to'g'ridan o'tish
             logger.info("[🏠] Bosh sahifa topilmadi — URL orqali o'tilmoqda...")
             try:
                 await page.goto("https://emaktab.uz/userfeed", wait_until="domcontentloaded", timeout=15000)
@@ -548,16 +521,13 @@ async def process_account(browser, bot: Bot, acc: dict):
             except Exception:
                 await page.go_back()
 
-        # 5. Bosh sahifada 2 soniya kutish va videoni yakunlash
         logger.info(f"[⏱️] {login} — Bosh sahifada 2 soniya kutilmoqda (video yakunlanmoqda)...")
         await asyncio.sleep(2.0)
 
-        # === Videoni saqlash va yopish ===
         await page.close()
         raw_video_path = await page.video.path()
         await context.close()
 
-        # MP4 formatga o'tkazish
         mp4_path = os.path.join(MEDIA_DIR, f"{login}.mp4")
         cmd = [
             "ffmpeg", "-y", "-i", raw_video_path,
@@ -592,10 +562,6 @@ async def process_account(browser, bot: Bot, acc: dict):
 
 
 def check_and_filter_active_classes(today_batch, bot):
-    """
-    Obunasi to'xtatilgan (paused) yoki muddati o'tgan (expired) sinflarni
-    eMaktab monitoring navbatidan chiqarib tashlaydi.
-    """
     import json
     teachers_file = os.path.join(BASE_DIR, "teachers.json")
     teachers = {}
@@ -666,8 +632,6 @@ async def run():
     logger.info(f"Hozirgi vaqt (Toshkent): {now.strftime('%Y-%m-%d %H:%M:%S')}, {day_names.get(weekday, '')}")
 
     ignore_curfew = os.getenv("IGNORE_CURFEW", "false").lower() == "true"
-
-    # Tungi rejim taqiqi (21:45 - 07:00) — Bu vaqt oralig'ida login qilish qat'iyan taqiqlanadi
     if config.is_curfew_time(now) and not ignore_curfew:
         curfew_msg = (
             "🛑 <b>TUNGI XAVFSIZLIK TAQIQI (21:45 - 07:00)</b>\n"
@@ -706,7 +670,6 @@ async def run():
     elif custom_day in ["6", "sun", "yakshanba"]:
         weekday = 6
 
-    # schedule_config.json dan faol kunlarni tekshirish
     sch_file = os.path.join(BASE_DIR, "schedule_config.json")
     if os.path.exists(sch_file):
         try:
@@ -761,7 +724,6 @@ async def run():
 
         logger.info(f"Bugungi ({day_names.get(weekday, '')}) navbatda {len(today_batch)} ta hisob bor.")
 
-    # Obunasi to'xtatilgan yoki muddati o'tgan sinflarni filtrlaymiz
     today_batch = check_and_filter_active_classes(today_batch, bot)
 
     if not today_batch:

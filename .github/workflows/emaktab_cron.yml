@@ -2,48 +2,46 @@ name: eMaktab Smart Scheduler
 
 on:
   schedule:
-    # Vaqtlar UTC da berilgan (Toshkent vaqti = UTC + 5 soat):
-    # 1. Shanba (sekin boshlanadi): 16:30 Toshkent (11:30 UTC)
-    - cron: '30 11 * * 6'
-    # 2. Yakshanba: 18:00 Toshkent (13:00 UTC)
-    - cron: '0 13 * * 0'
-    # 3. Dushanba: 18:15 Toshkent (13:15 UTC)
-    - cron: '15 13 * * 1'
-    # 4. Seshanba: 16:45 Toshkent (11:45 UTC)
+    # 1. Dushanba: 17:15 Toshkent (12:15 UTC)
+    - cron: '15 12 * * 1'
+    # 2. Seshanba: 16:45 Toshkent (11:45 UTC)
     - cron: '45 11 * * 2'
-    # 5. Chorshanba: 17:30 Toshkent (12:30 UTC)
+    # 3. Chorshanba: 17:30 Toshkent (12:30 UTC)
     - cron: '30 12 * * 3'
-    # 6. Payshanba: 15:40 Toshkent (10:40 UTC)
-    - cron: '40 10 * * 4'
-    # JUMA KUNI UMUMAN ISHLAMAYDI (DAM OLISH KUNI)
+    # 4. Payshanba: 16:20 Toshkent (11:20 UTC)
+    - cron: '20 11 * * 4'
+    # 5. Shanba: 15:45 Toshkent (10:45 UTC)
+    - cron: '45 10 * * 6'
+    # Zaxira (Agar yuqoridagi vaqtda GitHub Actions navbatda qolib kechiksa - 19:00 Toshkent):
+    - cron: '0 14 * * 1,2,3,4,6'
 
   workflow_dispatch:
     inputs:
       custom_day:
-        description: "Qaysi kun rejasini ishga tushirish (auto / shanba / yakshanba / dushanba / seshanba / chorshanba / payshanba)"
+        description: "Qaysi kun rejasini ishga tushirish (auto / dushanba / seshanba / chorshanba / payshanba / shanba)"
         required: false
         default: "auto"
         type: choice
         options:
           - auto
-          - shanba
-          - yakshanba
           - dushanba
           - seshanba
           - chorshanba
           - payshanba
+          - shanba
+          - yakshanba
       enable_jitter:
         description: "Boshlanishdan oldingi 1-5 daqiqa tasodifiy kutish (Anti-BAN)"
         required: false
-        default: false
+        default: true
         type: boolean
       force_run:
-        description: "Majburiy ishga tushirish (Juma kuni bo'lsa ham)"
+        description: "Majburiy ishga tushirish (Qoidaga qaramasdan)"
         required: false
         default: true
         type: boolean
       all_accounts:
-        description: "Barcha 62 ta hisobga to'liq kirish (Ierarxiya bo'yicha)"
+        description: "Barcha hisoblarga to'liq kirish"
         required: false
         default: false
         type: boolean

@@ -134,6 +134,47 @@
             background: var(--primary-hover);
         }
 
+        button.btn-accent {
+            background: #1f6feb;
+            color: #fff;
+            border: none;
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        button.btn-accent:hover {
+            background: #388bfd;
+        }
+
+        .days-selector {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .day-chip {
+            background: #21262d;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 6px 10px;
+            font-size: 12px;
+            color: #c9d1d9;
+            cursor: pointer;
+            user-select: none;
+            transition: all 0.2s;
+        }
+
+        .day-chip.active {
+            background: rgba(46, 160, 67, 0.2);
+            border-color: #2ea043;
+            color: #3fb950;
+            font-weight: 600;
+        }
+
         .teachers-list {
             margin-top: 8px;
             display: flex;
@@ -190,7 +231,6 @@
             color: #f85149;
         }
 
-        /* Action Buttons */
         .t-actions {
             display: flex;
             flex-wrap: wrap;
@@ -223,9 +263,6 @@
             border-color: rgba(46, 160, 67, 0.4);
             color: #3fb950;
         }
-        .btn-action.extend:hover {
-            background: rgba(46, 160, 67, 0.15);
-        }
 
         .btn-action.pause {
             border-color: rgba(210, 153, 34, 0.4);
@@ -235,9 +272,6 @@
         .btn-action.delete {
             border-color: rgba(218, 54, 51, 0.4);
             color: #f85149;
-        }
-        .btn-action.delete:hover {
-            background: rgba(218, 54, 51, 0.15);
         }
 
         .btn-refresh {
@@ -277,10 +311,46 @@
 <div class="container">
     <div class="header">
         <h1>👑 Root Boshqaruv Markazi</h1>
-        <p>AvtoEmaktab • Obunalar va Ustozlarni To'liq Nazorat Qilish</p>
+        <p>AvtoEmaktab • Obunalar va Random Grafik Nazorati</p>
     </div>
 
-    <!-- 1. Yangi ustoz qo'shish -->
+    <!-- 1. Random Vaqtlar va Kunlar Grafigi -->
+    <div class="card">
+        <h2>
+            <span>🎲 Random Kirish Grafigi</span>
+            <span style="font-size:11px; color:#8b949e;">Anti-BAN Himoyasi</span>
+        </h2>
+        
+        <label>Faol monitoring kunlari (tanlang):</label>
+        <div class="days-selector" id="daysSelector">
+            <div class="day-chip active" data-day="dushanba">Dushanba</div>
+            <div class="day-chip active" data-day="seshanba">Seshanba</div>
+            <div class="day-chip active" data-day="chorshanba">Chorshanba</div>
+            <div class="day-chip active" data-day="payshanba">Payshanba</div>
+            <div class="day-chip" data-day="juma">Juma (Dam)</div>
+            <div class="day-chip active" data-day="shanba">Shanba</div>
+            <div class="day-chip" data-day="yakshanba">Yakshanba</div>
+        </div>
+
+        <div class="row">
+            <div class="form-group">
+                <label>Boshlanish oynasi:</label>
+                <input type="time" id="timeStart" value="14:00">
+            </div>
+            <div class="form-group">
+                <label>Tugash oynasi:</label>
+                <input type="time" id="timeEnd" value="20:00">
+            </div>
+        </div>
+
+        <div style="display:flex; gap:8px; margin-top:6px;">
+            <button class="btn-primary" style="flex:2;" onclick="saveSchedule()">💾 Grafikni Saqlash</button>
+            <button class="btn-accent" style="flex:1;" onclick="triggerRunNow()">⚡ Hozir Boshlash</button>
+        </div>
+        <div id="scheduleToast" class="toast"></div>
+    </div>
+
+    <!-- 2. Yangi ustoz qo'shish -->
     <div class="card">
         <h2>➕ Yangi Ustoz Qo'shish</h2>
         <form id="addTeacherForm">
@@ -318,7 +388,7 @@
         </form>
     </div>
 
-    <!-- 2. Ustozlar va obunalar boshqaruvi -->
+    <!-- 3. Ustozlar va obunalar boshqaruvi -->
     <div class="card">
         <h2>
             <span>📋 Obunalar Monitoringi</span>
@@ -339,6 +409,103 @@
 
     const API_BASE = "https://avtoemaktab.vercel.app/api/telegram";
     const ROOT_ID = 6291811673;
+
+    // Day chips toggle
+    document.querySelectorAll(".day-chip").forEach(chip => {
+        chip.addEventListener("click", () => {
+            chip.classList.toggle("active");
+        });
+    });
+
+    async function loadSchedule() {
+        try {
+            const res = await fetch(`${API_BASE}?action=get_schedule&root_id=${ROOT_ID}`);
+            const data = await res.json();
+            if (data.ok && data.schedule) {
+                const s = data.schedule;
+                document.getElementById("timeStart").value = s.time_window_start || "14:00";
+                document.getElementById("timeEnd").value = s.time_window_end || "20:00";
+
+                document.querySelectorAll(".day-chip").forEach(chip => {
+                    const day = chip.getAttribute("data-day");
+                    if (s.active_days && s.active_days.includes(day)) {
+                        chip.classList.add("active");
+                    } else {
+                        chip.classList.remove("active");
+                    }
+                });
+            }
+        } catch (e) {
+            console.error(e);
+        }
+    }
+
+    async function saveSchedule() {
+        const toast = document.getElementById("scheduleToast");
+        toast.className = "toast";
+
+        const activeDays = [];
+        document.querySelectorAll(".day-chip.active").forEach(chip => {
+            activeDays.push(chip.getAttribute("data-day"));
+        });
+
+        const payload = {
+            action: "save_schedule",
+            root_id: ROOT_ID,
+            active_days: activeDays,
+            time_window_start: document.getElementById("timeStart").value,
+            time_window_end: document.getElementById("timeEnd").value
+        };
+
+        try {
+            const res = await fetch(API_BASE, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            });
+            const result = await res.json();
+            if (result.ok) {
+                toast.className = "toast success";
+                toast.innerText = "✅ Random kirish grafigi muvaffaqiyatli saqlandi!";
+            } else {
+                toast.className = "toast error";
+                toast.innerText = "❌ Xato: " + (result.error || "Saqlanmadi");
+            }
+        } catch (err) {
+            toast.className = "toast error";
+            toast.innerText = "❌ Tarmoq xatosi: " + err.message;
+        }
+    }
+
+    async function triggerRunNow() {
+        if (!confirm("Hozir darhol eMaktab monitoringini ishga tushirmoqchimisiz?")) return;
+        const toast = document.getElementById("scheduleToast");
+        toast.className = "toast";
+        toast.style.display = "block";
+        toast.innerText = "⏳ GitHub Actions ga signal yuborilmoqda...";
+
+        try {
+            const res = await fetch(API_BASE, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    action: "trigger_run",
+                    root_id: ROOT_ID
+                })
+            });
+            const result = await res.json();
+            if (result.ok) {
+                toast.className = "toast success";
+                toast.innerText = "🚀 Monitoring muvaffaqiyatli ishga tushirildi! Natijalar Telegramga keladi.";
+            } else {
+                toast.className = "toast error";
+                toast.innerText = "❌ Xato: " + (result.error || "Ishga tushirilmadi");
+            }
+        } catch (e) {
+            toast.className = "toast error";
+            toast.innerText = "❌ Xato: " + e.message;
+        }
+    }
 
     function getDaysDiff(dateStr) {
         try {
@@ -537,6 +704,7 @@
         }
     });
 
+    loadSchedule();
     loadTeachers();
 </script>
 

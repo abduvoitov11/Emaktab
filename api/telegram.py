@@ -36,6 +36,7 @@ ROOT_ID = int(config.ROOT_ID)
 
 TEACHERS_FILE = os.path.join(os.path.dirname(__file__), "..", "teachers.json")
 INCIDENTS_FILE = os.path.join(os.path.dirname(__file__), "..", "security_incidents.json")
+SCHEDULE_FILE = os.path.join(os.path.dirname(__file__), "..", "schedule_config.json")
 GITHUB_REPO = "abduvoitov11/Emaktab"
 GITHUB_PAT = os.getenv("GITHUB_PAT", "")
 
@@ -728,6 +729,22 @@ class handler(BaseHTTPRequestHandler):
                 self.wfile.write(json.dumps({"ok": False, "error": "Ruxsat yo'q"}).encode())
                 return
 
+        # Agar admin panel grafik sozlamalarini so'rasa
+        if "action=get_schedule" in self.path:
+            if "root_id=6291811673" in self.path:
+                sch = {}
+                if os.path.exists(SCHEDULE_FILE):
+                    try:
+                        with open(SCHEDULE_FILE, 'r', encoding='utf-8') as f:
+                            sch = json.load(f)
+                    except Exception:
+                        pass
+                self.wfile.write(json.dumps({"ok": True, "schedule": sch}).encode())
+                return
+            else:
+                self.wfile.write(json.dumps({"ok": False, "error": "Ruxsat yo'q"}).encode())
+                return
+
         self.wfile.write(json.dumps({
             "status": "ok",
             "service": "AvtoEmaktab Webhook & Billing",
@@ -796,6 +813,61 @@ class handler(BaseHTTPRequestHandler):
                     logger.warning(f"Could not notify teacher: {ex}")
 
                 self.wfile.write(json.dumps({"ok": True, "expires_at": exp_date}).encode())
+                return
+
+            # Jadval sozlamalarini saqlash
+            elif data.get("action") == "save_schedule":
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.end_headers()
+
+                if int(data.get("root_id", 0)) != ROOT_ID:
+                    self.wfile.write(json.dumps({"ok": False, "error": "Ruxsatsiz amal!"}).encode())
+                    return
+
+                sch = {
+                    "active_days": data.get("active_days", ["dushanba", "seshanba", "chorshanba", "payshanba", "shanba"]),
+                    "time_window_start": data.get("time_window_start", "14:00"),
+                    "time_window_end": data.get("time_window_end", "20:00"),
+                    "random_mode": True
+                }
+                try:
+                    with open(SCHEDULE_FILE, 'w', encoding='utf-8') as f:
+                        json.dump(sch, f, ensure_ascii=False, indent=2)
+                    sync_file_to_github("schedule_config.json", sch, "chore(schedule): update random monitoring window")
+                    self.wfile.write(json.dumps({"ok": True}).encode())
+                except Exception as ex:
+                    self.wfile.write(json.dumps({"ok": False, "error": str(ex)}).encode())
+                return
+
+            # Darhol ishga tushirish (GitHub Actions workflow_dispatch trigger)
+            elif data.get("action") == "trigger_run":
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.end_headers()
+
+                if int(data.get("root_id", 0)) != ROOT_ID:
+                    self.wfile.write(json.dumps({"ok": False, "error": "Ruxsatsiz amal!"}).encode())
+                    return
+
+                try:
+                    gh_pat = os.getenv("GITHUB_PAT", GITHUB_PAT)
+                    url = f"https://api.github.com/repos/{GITHUB_REPO}/actions/workflows/emaktab_cron.yml/dispatches"
+                    headers = {
+                        "Authorization": f"token {gh_pat}",
+                        "Accept": "application/vnd.github+json",
+                        "User-Agent": "AvtoEmaktab-Trigger"
+                    }
+                    payload = {"ref": "main", "inputs": {"force_run": "true"}}
+                    req = urllib.request.Request(url, data=json.dumps(payload).encode(), headers=headers, method="POST")
+                    with urllib.request.urlopen(req) as resp:
+                        logger.info(f"GitHub workflow dispatch status: {resp.status}")
+                    self.wfile.write(json.dumps({"ok": True}).encode())
+                except Exception as ex:
+                    logger.error(f"Workflow dispatch error: {ex}")
+                    self.wfile.write(json.dumps({"ok": False, "error": str(ex)}).encode())
                 return
 
             # Obunani boshqarish (uzaytirish, muzlatish, faollashtirish)

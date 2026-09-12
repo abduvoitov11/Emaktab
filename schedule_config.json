@@ -1,0 +1,10 @@
+{
+  "active_days": ["dushanba", "seshanba", "chorshanba", "payshanba", "shanba"],
+  "time_window_start": "14:00",
+  "time_window_end": "20:00",
+  "random_mode": true,
+  "min_pause_seconds": 20,
+  "max_pause_seconds": 45,
+  "last_run_date": "",
+  "next_scheduled_run": "Bugun 16:40 - 18:20 oralig'ida"
+}

@@ -3,7 +3,7 @@ excel_base64.txt
 *.xlsx
 *.xls
 *.csv
-
+*.html
 
 media/
 screenshots/
@@ -25,7 +25,7 @@ __pycache__/
 .env
 *.log
 
-# Sessiyalar (cookie/token fayllar — hech qachon commitlanmaydi!)
+
 sessions/
 
 # Test natijalar

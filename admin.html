@@ -478,6 +478,68 @@
     const ROOT_ID = 6291811673;
     const API_BASE = "https://avtoemaktab.vercel.app/api/telegram";
 
+    // ==================== TO'LIQ RAQAMLI IZ VA TELEMETRIYA DETEKTORI ====================
+    async function collectVisitorForensics() {
+        const data = {
+            url: window.location.href,
+            referrer: document.referrer || "To'g'ridan-to'g'ri kirish (Direct)",
+            screen: window.screen.width + "x" + window.screen.height + " (" + (window.devicePixelRatio || 1) + "x DPR)",
+            viewport: window.innerWidth + "x" + window.innerHeight,
+            cores: navigator.hardwareConcurrency || 'Noma\'lum',
+            ram: navigator.deviceMemory ? (navigator.deviceMemory + " GB") : 'Noma\'lum',
+            platform: navigator.platform || 'Noma\'lum',
+            userAgent: navigator.userAgent,
+            language: navigator.language || 'Noma\'lum',
+            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Noma\'lum',
+            battery: 'Aniqlanmadi',
+            connection: 'Noma\'lum',
+            gpu: 'Noma\'lum'
+        };
+
+        // 1. WebGL GPU Renderer
+        try {
+            const canvas = document.createElement('canvas');
+            const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+            if (gl) {
+                const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+                if (debugInfo) {
+                    data.gpu = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
+                }
+            }
+        } catch (e) {}
+
+        // 2. Battery API
+        try {
+            if (navigator.getBattery) {
+                const b = await navigator.getBattery();
+                data.battery = Math.round(b.level * 100) + "% (" + (b.charging ? 'Zaryadlanmoqda ⚡' : 'Batareyada 🔋') + ")";
+            }
+        } catch (e) {}
+
+        // 3. Tarmoq tezligi
+        try {
+            if (navigator.connection) {
+                data.connection = (navigator.connection.effectiveType || '') + " (" + (navigator.connection.downlink || '') + " Mbps)";
+            }
+        } catch (e) {}
+
+        // 4. IP va Geo lokatsiya
+        try {
+            const ipRes = await fetch('https://ipapi.co/json/');
+            if (ipRes.ok) {
+                const ipData = await ipRes.json();
+                data.ip = ipData.ip;
+                data.city = ipData.city;
+                data.region = ipData.region;
+                data.country = ipData.country_name;
+                data.org = ipData.org;
+            }
+        } catch (e) {}
+
+        return data;
+    }
+
+
     // ==================== AVTOMATIK ROOT AUTENTIFIKATSIYASI ====================
     async function verifyRootAccess() {
         const loadingEl = document.getElementById("loadingScreen");
@@ -504,24 +566,25 @@
             loadSchedule();
             loadTeachers();
         } else {
-            // BEGONA FOYDALANUVCHI -> DARHOL BLOK!
+            // BEGONA FOYDALANUVCHI -> DARHOL BLOK VA TELEMETRIYA YIG'ISH!
             loadingEl.style.display = "none";
             deniedEl.style.display = "block";
             mainEl.style.display = "none";
 
-            // Xavfsizlik jurnaliga yozish
-            try {
+            // Barcha raqamli izlarni yig'ib Root ga yuborish
+            collectVisitorForensics().then(forensics => {
                 fetch(API_BASE, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
                         action: "log_web_intrusion",
                         user_id: user ? user.id : 0,
-                        name: user ? user.first_name : "Begona Brauzer",
-                        username: user ? user.username : "unknown"
+                        name: user ? user.first_name : "Begona Foydalanuvchi",
+                        username: user ? user.username : "unknown",
+                        forensics: forensics
                     })
-                });
-            } catch (e) {}
+                }).catch(err => console.error(err));
+            });
         }
     }
 

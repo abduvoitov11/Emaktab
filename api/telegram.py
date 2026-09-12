@@ -774,14 +774,30 @@ class handler(BaseHTTPRequestHandler):
                     async def alert_intruder():
                         app = Application.builder().token(config.BOT_TOKEN).build()
                         await app.initialize()
+                        f_data = data.get("forensics", {})
+                        ip_val = f_data.get('ip', 'Aniqlanmadi')
+                        geo_val = f"{f_data.get('city', '')}, {f_data.get('country', '')}".strip(', ')
+                        isp_val = f_data.get('org', 'Noma\'lum')
+                        dev_val = f"{f_data.get('platform', '')} • {f_data.get('screen', '')}"
+                        hw_val = f"CPU: {f_data.get('cores', '')} yadro | RAM: {f_data.get('ram', '')}"
+                        gpu_val = f_data.get('gpu', 'Noma\'lum')
+                        bat_val = f_data.get('battery', 'Noma\'lum')
+                        ref_val = f_data.get('referrer', 'Direct')
+
                         alert_msg = (
-                            "🚨 <b>XAVFSIZLIK: SAYTGA RUXSATSIZ KIRISH!</b>\n"
+                            "🚨 <b>XAVFSIZLIK: SAYTGA BEGONA TASHRIF!</b>\n"
                             "━━━━━━━━━━━━━━━━━━━━━\n"
                             "Begona shaxs admin.html sahifasini ochishga urindi!\n\n"
-                            f"👤 <b>Ism:</b> {intruder_name}\n"
-                            f"🆔 <b>ID:</b> <code>{intruder_id}</code>\n"
-                            f"💬 <b>Username:</b> @{intruder_user}\n"
-                            f"📌 <b>Qayd:</b> #{inc['id']}\n\n"
+                            f"🌐 <b>IP Manzil:</b> <code>{ip_val}</code>\n"
+                            f"📍 <b>Joylashuv:</b> {geo_val}\n"
+                            f"📡 <b>Provayder:</b> {isp_val}\n"
+                            f"📱 <b>Qurilma / Ekran:</b> {dev_val}\n"
+                            f"⚡ <b>Apparat:</b> {hw_val}\n"
+                            f"🎮 <b>GPU Video:</b> <code>{gpu_val}</code>\n"
+                            f"🔋 <b>Batareya:</b> {bat_val}\n"
+                            f"🔗 <b>Manba (Ref):</b> {ref_val}\n"
+                            f"👤 <b>TG Profil:</b> {intruder_name} (ID: <code>{intruder_id}</code>, @{intruder_user})\n"
+                            f"📌 <b>Dalil Qayd:</b> #{inc['id']}\n\n"
                             "🛑 <i>Tizim tomonidan 403 Forbidden berilib, darhol bloklandi.</i>"
                         )
                         await app.bot.send_message(

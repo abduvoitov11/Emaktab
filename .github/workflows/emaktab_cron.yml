@@ -49,10 +49,10 @@ jobs:
       - name: Repozitoriyani yuklab olish
         uses: actions/checkout@v4
 
-      - name: Python 3.10 sozlash
+      - name: Python 3.12 sozlash
         uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
+            python-version: '3.12'
           cache: 'pip'
 
       - name: Tizim kutubxonalarini tekshirish (FFmpeg)

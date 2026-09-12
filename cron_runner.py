@@ -159,16 +159,16 @@ def generate_weekly_schedule(accounts: list, year: int, week: int):
     days = {0: [], 1: [], 2: [], 3: [], 4: [], 5: [], 6: []}
     counts = {acc["login"]: 0 for acc in accounts}
 
-    active_days = [5, 6, 0, 1, 2, 3]
+    active_days = [0, 1, 2, 3, 5]
 
     n = len(shuffled)
-    saturday_quota = min(3, n)
+    saturday_quota = min(6, n)
     remaining_n = n - saturday_quota
-    base_per_day = remaining_n // 5
-    rem = remaining_n % 5
+    base_per_day = remaining_n // 4
+    rem = remaining_n % 4
 
     base_dist = {5: saturday_quota}
-    for i, d in enumerate([6, 0, 1, 2, 3]):
+    for i, d in enumerate([0, 1, 2, 3]):
         base_dist[d] = base_per_day + (1 if i < rem else 0)
 
     idx = 0
@@ -607,9 +607,12 @@ def check_and_filter_active_classes(today_batch, bot):
         else:
             skipped_count += 1
             info = paused_or_expired_classes.get(acc_sinf, {})
+            u_name = info.get("name", "Nomalum")
+            u_status = info.get("status", "nomalum")
+            u_exp = info.get("expires_at", "")
             logger.warning(
                 f"⏸️ Sinf {acc.get('sinf')} ({acc.get('login')}) o'tkazib yuborildi. "
-                f"Ustoz: {info.get('name', 'Noma\'lum')}, Holati: {info.get('status', 'noma\'lum')}, Muddati: {info.get('expires_at')}"
+                f"Ustoz: {u_name}, Holati: {u_status}, Muddati: {u_exp}"
             )
 
     if skipped_count > 0:
